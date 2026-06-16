@@ -17,23 +17,47 @@
         </StackLayout>
 
         <!-- List Section -->
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Workouts}" Margin="10">
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Workouts}" Margin="10"
+             EmptyView="No workouts logged yet. Hit the gym and record your first session!">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame Margin="5" Padding="15" CornerRadius="10" BorderColor="LightGray">
+                    <Frame Margin="5" Padding="15" CornerRadius="10"
+                        BorderColor="#E0E0E0" HasShadow="True">
                         <VerticalStackLayout>
-                            <Label Text="{Binding Type}" FontAttributes="Bold" FontSize="18"/>
-                            <HorizontalStackLayout Spacing="10">
-                                <Label Text="{Binding Time, StringFormat='{0} mins'}" />
-                                <BoxView WidthRequest="1" BackgroundColor="LightGray" VerticalOptions="Center" HeightRequest="20" />
-                                <Label Text="{Binding Distance, StringFormat='{0} units'}" />
-                            </HorizontalStackLayout>
-                            <Label Text="{Binding MaxHeartRate, StringFormat='Max HR: {0}'}"
-                                   TextColor="Gray" />
-                        </VerticalStackLayout>
-                    </Frame>
+                            <!-- The Title will be the Activity Type (e.g., "Treadmill") -->
+                            <Label Text="{Binding Type}"
+                            FontSize="20"
+                            FontAttributes="Bold"
+                            TextColor="#512BD4"/>
+
+                            <!-- A separator line or spacing -->
+                            <BoxView HeightRequest="1" Color="LightGray" Margin="0,5" />
+
+                <Grid ColumnDefinitions="*,*">
+                    <!-- Left side: Time and Date -->
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label Text="{Binding Time, StringFormat='{0:hh:mm tt}'}"
+                               FontSize="16"
+                               TextColor="Black"/>
+                        <Label Text="{Binding DateCreated, StringFormat='{0:MM/dd/yyyy}'}"
+                               FontSize="12"
+                               TextColor="Gray"/>
+                    </VerticalStackLayout>
+
+                    <!-- Right side: Stats -->
+                    <VerticalStackLayout Grid.Column="1">
+                        <Label Text="{Binding Distance, StringFormat='Dist: {0}'}"
+                               FontSize="16"
+                               TextColor="#2E8B57"/>
+                        <Label Text="{Binding Calories, StringFormat='Cals: {0}'}"
+                               FontSize="16"
+                               TextColor="#D2691E"/>
+                    </VerticalStackLayout>
+                </Grid>
+            </VerticalStackLayout>
+        </Frame>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-    </Grid>
-</ContentPage>
+        </Grid>
+    </ContentPage>

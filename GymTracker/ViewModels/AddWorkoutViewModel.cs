@@ -32,24 +32,30 @@ public partial class AddWorkoutViewModel : ObservableObject
         _selectedType = ActivityType.CrossTrainer;
     }
 
-    [RelayCommand]
-    private async Task SaveWorkout()
+    [[RelayCommand]
+private async Task SaveWorkout()
+{
+    // Basic Validation: Ensure values are greater than zero
+    if (CurrentWorkout.Time <= 0 || CurrentWorkout.MaxHeartRate == 0)
     {
-        // Validation: Ensure required fields aren't empty/zero before saving
-        if (CurrentWorkout.Time > 0 && CurrentWorkout.MaxHeartRate > 0)
-        {
-            // Update the type from the picker selection
-            CurrentWorkout.Type = SelectedType;
+        await Shell.Current.DisplayAlert("Input Error", "Please enter valid numbers for Time and Heart Rate.",
+"OK");
+        return;
+    }
 
-            // Save to Database
-            _dbService.SaveWorkout(CurrentWorkout);
+    if (CurrentWorkout.Calories <= 0 || CurrentWorkout.Distance < 0)
+    {
+        await Shell.Current.DisplayAlert("Input Error", "Please enter positive values for Calories and Distance.",
+"OK");
+        return;
+    }
 
-            // Success! (We will add navigation logic here later)
-            await Shell.Current.DisplayAlert("Success", "Workout saved!", "OK");
-        }
-        else
-        {
-            await Shell.Current.DisplayAlert("Error", "Please fill in all fields.", "OK");
-        }
+    // If validation passes, save it
+    CurrentWorkout.Type = SelectedType;
+    _dbService.SaveWorkout(CurrentWorkout);
+
+    await Shell.Current.DisplayAlert("Success", "Workout saved to your log!", "OK");
+
+    // Optional: Navigate back or clear the form here
     }
 }
