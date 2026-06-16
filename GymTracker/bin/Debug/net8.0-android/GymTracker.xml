@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>GymTracker</name>
+    </assembly>
+    <members>
+        <member name="T:GymTracker.ViewModels.AddWorkoutViewModel">
+            <inheritdoc/>
+            <inheritdoc/>
+        </member>
+        <member name="P:GymTracker.ViewModels.AddWorkoutViewModel.CurrentWorkout">
+            <inheritdoc cref="F:GymTracker.ViewModels.AddWorkoutViewModel._currentWorkout"/>
+        </member>
+        <member name="P:GymTracker.ViewModels.AddWorkoutViewModel.SelectedType">
+            <inheritdoc cref="F:GymTracker.ViewModels.AddWorkoutViewModel._selectedType"/>
+        </member>
+        <member name="F:GymTracker.ViewModels.AddWorkoutViewModel.saveWorkoutCommand">
+            <summary>The backing field for <see cref="P:GymTracker.ViewModels.AddWorkoutViewModel.SaveWorkoutCommand"/>.</summary>
+        </member>
+        <member name="P:GymTracker.ViewModels.AddWorkoutViewModel.SaveWorkoutCommand">
+            <summary>Gets an <see cref="T:CommunityToolkit.Mvvm.Input.IAsyncRelayCommand"/> instance wrapping <see cref="M:GymTracker.ViewModels.AddWorkoutViewModel.SaveWorkout"/>.</summary>
+        </member>
+        <member name="T:GymTracker.ViewModels.MainViewModel">
+            <inheritdoc/>
+        </member>
+        <member name="P:GymTracker.ViewModels.MainViewModel.Workouts">
+            <inheritdoc cref="F:GymTracker.ViewModels.MainViewModel._workouts"/>
+        </member>
+        <member name="T:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs">
+            <summary>
+            A helper type providing cached, reusable <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instances
+            for all properties generated with <see cref="T:CommunityToolkit.Mvvm.ComponentModel.ObservablePropertyAttribute"/>.
+            </summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.CurrentWorkout">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "CurrentWorkout" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.SelectedType">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "SelectedType" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangingArgs.Workouts">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangingEventArgs"/> instance for all "Workouts" generated properties.</summary>
+        </member>
+        <member name="T:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs">
+            <summary>
+            A helper type providing cached, reusable <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instances
+            for all properties generated with <see cref="T:CommunityToolkit.Mvvm.ComponentModel.ObservablePropertyAttribute"/>.
+            </summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.CurrentWorkout">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "CurrentWorkout" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.SelectedType">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "SelectedType" generated properties.</summary>
+        </member>
+        <member name="F:CommunityToolkit.Mvvm.ComponentModel.__Internals.__KnownINotifyPropertyChangedArgs.Workouts">
+            <summary>The cached <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/> instance for all "Workouts" generated properties.</summary>
+        </member>
+    </members>
+</doc>
