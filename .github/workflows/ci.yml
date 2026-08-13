@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore WorkoutTrackerSolution.sln
+
+      - name: Build
+        run: dotnet build WorkoutTrackerSolution.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test WorkoutTracker.Tests/WorkoutTracker.Tests.csproj --configuration Release --no-build --verbosity normal
