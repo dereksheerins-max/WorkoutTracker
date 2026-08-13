@@ -93,6 +93,10 @@ public partial class AddWorkoutViewModel : ObservableObject
         Exercises.Remove(exercise);
     }
 
+    private const int MaxNameLength = 100;
+    private const int MaxNotesLength = 500;
+    private const int MaxExerciseNameLength = 100;
+
     [RelayCommand]
     private async Task SaveWorkoutAsync()
     {
@@ -100,6 +104,33 @@ public partial class AddWorkoutViewModel : ObservableObject
         {
             await Shell.Current.DisplayAlert("Error", "Please enter a workout name", "OK");
             return;
+        }
+
+        if (WorkoutName.Trim().Length > MaxNameLength)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Workout name must be {MaxNameLength} characters or fewer.", "OK");
+            return;
+        }
+
+        if (WorkoutNotes.Length > MaxNotesLength)
+        {
+            await Shell.Current.DisplayAlert("Error", $"Notes must be {MaxNotesLength} characters or fewer.", "OK");
+            return;
+        }
+
+        foreach (var exercise in Exercises)
+        {
+            if (string.IsNullOrWhiteSpace(exercise.Name))
+            {
+                await Shell.Current.DisplayAlert("Error", "All exercises must have a name.", "OK");
+                return;
+            }
+
+            if (exercise.Name.Trim().Length > MaxExerciseNameLength)
+            {
+                await Shell.Current.DisplayAlert("Error", $"Exercise names must be {MaxExerciseNameLength} characters or fewer.", "OK");
+                return;
+            }
         }
 
         var session = new WorkoutSession
