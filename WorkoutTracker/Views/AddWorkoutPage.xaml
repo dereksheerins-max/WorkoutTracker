@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:WorkoutTracker.ViewModels"
+             xmlns:models="clr-namespace:WorkoutTracker.Models"
+             x:Class="WorkoutTracker.Views.AddWorkoutPage"
+             Title="Add Workout"
+             Shell.NavBarIsVisible="True">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <Label Text="Workout Name"
+                   Style="{StaticResource BodyStrong}"/>
+            <Entry Text="{Binding WorkoutName}"
+                   Placeholder="e.g., Push Day, Leg Day"/>
+
+            <Label Text="Date"
+                   Style="{StaticResource BodyStrong}"/>
+            <DatePicker Date="{Binding WorkoutDate}"/>
+
+            <Label Text="Notes (optional)"
+                   Style="{StaticResource BodyStrong}"/>
+            <Editor Text="{Binding WorkoutNotes}"
+                    Placeholder="Add any notes..."
+                    HeightRequest="100"/>
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Exercises"
+                       Style="{StaticResource Headline}"
+                       FontSize="20"
+                       VerticalOptions="Center"/>
+                <Button Text="Add Exercise"
+                        Grid.Column="1"
+                        Command="{Binding AddExerciseCommand}"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+                        TextColor="White"/>
+            </Grid>
+
+            <CollectionView ItemsSource="{Binding Exercises}"
+                            SelectionMode="None"
+                            HeightRequest="-1">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="0,8"
+                               Padding="16"
+                               CornerRadius="8"
+                               BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
+                               HasShadow="True">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                    <Entry Text="{Binding Name}"
+                                           Placeholder="Exercise Name"
+                                           FontSize="16"/>
+                                    <Button Grid.Column="1"
+                                            Text="X"
+                                            TextColor="Red"
+                                            BackgroundColor="Transparent"
+                                            CommandParameter="{Binding .}"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AddWorkoutViewModel}}, Path=RemoveExerciseCommand}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Sets"
+                                               TextColor="Gray"
+                                               FontSize="12"/>
+                                        <Entry Keyboard="Numeric"
+                                               Text="{Binding Sets}"
+                                               Placeholder="3"/>
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                        <Label Text="Reps"
+                                               TextColor="Gray"
+                                               FontSize="12"/>
+                                        <Entry Keyboard="Numeric"
+                                               Text="{Binding Reps}"
+                                               Placeholder="10"/>
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="2" Spacing="4">
+                                        <Label Text="Weight (kg)"
+                                               TextColor="Gray"
+                                               FontSize="12"/>
+                                        <Entry Keyboard="Numeric"
+                                               Text="{Binding Weight}"
+                                               Placeholder="0"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="Save Workout"
+                    Command="{Binding SaveWorkoutCommand}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
+                    TextColor="White"
+                    HeightRequest="50"
+                    CornerRadius="8"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

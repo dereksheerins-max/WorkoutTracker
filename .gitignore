@@ -1,0 +1,29 @@
+# Ignore build outputs
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLite DBs and local DB files
+*.db
+*.sqlite
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+
+# JetBrains
+*.dotCover

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:WorkoutTracker.ViewModels"
+             x:Class="WorkoutTracker.Views.WorkoutListPage"
+             Title="Workouts"
+             Shell.NavBarIsVisible="True">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}"
+                 Command="{Binding LoadWorkoutsCommand}">
+        <CollectionView ItemsSource="{Binding WorkoutSessions}"
+                        SelectionMode="None">
+            <CollectionView.Header>
+                <Grid Padding="16" ColumnDefinitions="*,Auto">
+                    <Label Text="My Workouts"
+                           Style="{StaticResource Headline}"
+                           VerticalOptions="Center"/>
+                    <Button Text="+"
+                            Grid.Column="1"
+                            Command="{Binding AddWorkoutCommand}"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"/>
+                </Grid>
+            </CollectionView.Header>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <SwipeView>
+                        <SwipeView.RightItems>
+                            <SwipeItems>
+                                <SwipeItem Text="Delete"
+                                           BackgroundColor="Red"
+                                           CommandParameter="{Binding .}"
+                                           Command="{Binding Source={RelativeSource AncestorType={x:Type vm:WorkoutListViewModel}}, Path=DeleteWorkoutCommand}"/>
+                            </SwipeItems>
+                        </SwipeView.RightItems>
+
+                        <Frame Margin="16,8"
+                               Padding="16"
+                               CornerRadius="8"
+                               BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
+                               HasShadow="True">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer CommandParameter="{Binding .}"
+                                                      Command="{Binding Source={RelativeSource AncestorType={x:Type vm:WorkoutListViewModel}}, Path=EditWorkoutCommand}"/>
+                            </Frame.GestureRecognizers>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Name}"
+                                           Style="{StaticResource BodyStrong}"
+                                           FontSize="18"/>
+                                    <Label Text="{Binding Date, StringFormat='{0:MMM dd, yyyy}'}"
+                                           TextColor="Gray"
+                                           FontSize="14"/>
+                                    <Label Text="{Binding Exercises.Count, StringFormat='{0} exercises'}"
+                                           TextColor="Gray"
+                                           FontSize="14"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Frame>
+                    </SwipeView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </RefreshView>
+
+</ContentPage>
