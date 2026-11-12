@@ -48,8 +48,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Install MAUI workload
-        run: dotnet workload install maui-windows
+        run: dotnet workload install maui
 
+      # The whole workload is needed because restore evaluates every target framework
+      # in the project, not just the one being built.
       - name: Build Windows app
         run: >
           dotnet build WorkoutTracker/WorkoutTracker.csproj
