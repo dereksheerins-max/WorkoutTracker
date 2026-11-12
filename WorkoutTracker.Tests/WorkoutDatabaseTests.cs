@@ -100,23 +100,27 @@ public class WorkoutDatabaseTests : IDisposable
     public async Task FirstQuery_WithoutExplicitInitialize_ShouldSelfInitialize()
     {
         var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
-        try
+        using (var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance))
         {
-            var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
-
             var sessions = await db.GetWorkoutSessionsAsync();
 
             Assert.Empty(sessions);
         }
-        finally
-        {
-            try
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-            catch { /* connection still holds the file open; ignore cleanup errors */ }
-        }
+
+        File.Delete(path);
+    }
+
+    [Fact]
+    public async Task Dispose_ShouldReleaseDatabaseFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+        await db.GetWorkoutSessionsAsync();
+
+        db.Dispose();
+
+        // Throws IOException if the connection still holds the file open
+        File.Delete(path);
     }
 
     [Fact]
@@ -147,11 +151,9 @@ public class WorkoutDatabaseTests : IDisposable
 
     public void Dispose()
     {
-        try
-        {
-            if (File.Exists(_dbPath))
-                File.Delete(_dbPath);
-        }
-        catch { /* ignore cleanup errors */ }
+        _database.Dispose();
+
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
     }
 }

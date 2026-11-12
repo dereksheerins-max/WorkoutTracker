@@ -9,7 +9,7 @@ using WorkoutTracker.Models;
 
 namespace WorkoutTracker.Services;
 
-public class WorkoutDatabase
+public class WorkoutDatabase : IDisposable
 {
     private readonly SQLiteAsyncConnection _database;
     private readonly ILogger<WorkoutDatabase>? _logger;
@@ -163,4 +163,8 @@ public class WorkoutDatabase
             throw;
         }
     }
+
+    public Task CloseAsync() => _database.CloseAsync();
+
+    public void Dispose() => CloseAsync().GetAwaiter().GetResult();
 }
