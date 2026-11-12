@@ -7,7 +7,9 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  # Core + tests target net8.0 and run anywhere; the MAUI app cannot be built on
+  # Linux at all (net8.0-ios / net8.0-maccatalyst), so the two are split.
+  core-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,15 +17,41 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore WorkoutTrackerSolution.sln
+      - name: Test
+        run: >
+          dotnet test WorkoutTracker.Tests/WorkoutTracker.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory TestResults
 
-      - name: Build
-        run: dotnet build WorkoutTrackerSolution.sln --configuration Release --no-restore
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
 
-      - name: Run tests
-        run: dotnet test WorkoutTracker.Tests/WorkoutTracker.Tests.csproj --configuration Release --no-build --verbosity normal
+  maui-build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui-windows
+
+      - name: Build Windows app
+        run: >
+          dotnet build WorkoutTracker/WorkoutTracker.csproj
+          --configuration Release
+          -f net8.0-windows10.0.19041.0
