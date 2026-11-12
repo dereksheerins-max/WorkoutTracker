@@ -18,6 +18,8 @@ public partial class AddWorkoutViewModel : ObservableObject
 
     public Task? LoadingTask => _loadTask;
 
+    public string Title => WorkoutId > 0 ? "Edit Workout" : "Add Workout";
+
     [ObservableProperty]
     private int _workoutId;
 
@@ -51,6 +53,8 @@ public partial class AddWorkoutViewModel : ObservableObject
     // task is tracked so Save can wait for the load to finish.
     partial void OnWorkoutIdChanged(int value)
     {
+        OnPropertyChanged(nameof(Title));
+
         if (value > 0)
         {
             _loadTask = LoadAndHandleAsync(value);

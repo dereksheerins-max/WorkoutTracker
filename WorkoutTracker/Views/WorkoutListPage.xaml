@@ -37,15 +37,18 @@
                             </SwipeItems>
                         </SwipeView.RightItems>
 
-                        <Frame Margin="16,8"
-                               Padding="16"
-                               CornerRadius="8"
-                               BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
-                               HasShadow="True">
-                            <Frame.GestureRecognizers>
+                        <Border Margin="16,8"
+                                Padding="16"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 8">
+                            <Border.Shadow>
+                                <Shadow Brush="Black" Opacity="0.25" Radius="6" Offset="0,2" />
+                            </Border.Shadow>
+                            <Border.GestureRecognizers>
                                 <TapGestureRecognizer CommandParameter="{Binding .}"
                                                       Command="{Binding Source={RelativeSource AncestorType={x:Type vm:WorkoutListViewModel}}, Path=EditWorkoutCommand}"/>
-                            </Frame.GestureRecognizers>
+                            </Border.GestureRecognizers>
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <VerticalStackLayout Spacing="4">
@@ -60,10 +63,23 @@
                                            FontSize="14"/>
                                 </VerticalStackLayout>
                             </Grid>
-                        </Frame>
+                        </Border>
                     </SwipeView>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <Grid Padding="40,60" RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <Label Text="No workouts yet"
+                           FontFamily="OpenSansSemibold"
+                           FontSize="24"
+                           HorizontalOptions="Center" />
+                    <Label Grid.Row="1"
+                           Text="Tap + to add your first workout"
+                           TextColor="Gray"
+                           HorizontalOptions="Center" />
+                </Grid>
+            </CollectionView.EmptyView>
         </CollectionView>
     </RefreshView>
 

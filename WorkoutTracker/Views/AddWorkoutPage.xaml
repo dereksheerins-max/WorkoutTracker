@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:WorkoutTracker.ViewModels;assembly=WorkoutTracker.Core"
              x:Class="WorkoutTracker.Views.AddWorkoutPage"
-             Title="Add Workout"
+             Title="{Binding Title}"
              Shell.NavBarIsVisible="True">
 
     <ScrollView>
@@ -48,11 +48,14 @@
                             HeightRequest="-1">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Frame Margin="0,8"
-                               Padding="16"
-                               CornerRadius="8"
-                               BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
-                               HasShadow="True">
+                        <Border Margin="0,8"
+                                Padding="16"
+                                BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 8">
+                            <Border.Shadow>
+                                <Shadow Brush="Black" Opacity="0.25" Radius="6" Offset="0,2" />
+                            </Border.Shadow>
                             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
 
                                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
@@ -94,7 +97,7 @@
                                     </VerticalStackLayout>
                                 </Grid>
                             </Grid>
-                        </Frame>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

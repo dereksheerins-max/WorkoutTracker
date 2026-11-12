@@ -202,6 +202,18 @@ public class AddWorkoutViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Title_ReflectsAddVersusEditMode()
+    {
+        var viewModel = CreateViewModel();
+        Assert.Equal("Add Workout", viewModel.Title);
+
+        viewModel.WorkoutId = 42;
+        await PendingLoad(viewModel);
+
+        Assert.Equal("Edit Workout", viewModel.Title);
+    }
+
+    [Fact]
     public void AddAndRemoveExercise_ManagesCollection()
     {
         var viewModel = CreateViewModel();
