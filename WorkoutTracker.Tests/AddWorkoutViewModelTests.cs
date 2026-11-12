@@ -271,6 +271,38 @@ public class AddWorkoutViewModelTests : IDisposable
         Assert.Empty(viewModel.Exercises);
     }
 
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public async Task Save_WithNonFiniteWeight_ShowsError(double weight)
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.Exercises[0].Weight = weight;
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "Exercise weight must be a finite number.");
+        Assert.Empty(_navigation.Calls);
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
+    [Fact]
+    public async Task Save_TrimsWhitespaceBeforePersisting()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.WorkoutName = "  Push Day  ";
+        viewModel.WorkoutNotes = "   notes   ";
+        viewModel.Exercises.Add(new Exercise { Name = "  Bench Press  ", Sets = 3, Reps = 5, Weight = 80 });
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        Assert.Equal("Push Day", saved.Name);
+        Assert.Equal("notes", saved.Notes);
+        Assert.Equal("Bench Press", Assert.Single(saved.Exercises).Name);
+    }
+
     public void Dispose()
     {
         _database.Dispose();

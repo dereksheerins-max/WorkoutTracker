@@ -116,10 +116,6 @@ public partial class AddWorkoutViewModel : ObservableObject
         Exercises.Remove(exercise);
     }
 
-    private const int MaxNameLength = 100;
-    private const int MaxNotesLength = 500;
-    private const int MaxExerciseNameLength = 100;
-
     [RelayCommand]
     private async Task SaveWorkoutAsync()
     {
@@ -135,65 +131,23 @@ public partial class AddWorkoutViewModel : ObservableObject
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(WorkoutName))
-        {
-            await _dialogService.DisplayAlert("Error", "Please enter a workout name", "OK");
-            return;
-        }
-
-        if (WorkoutName.Trim().Length > MaxNameLength)
-        {
-            await _dialogService.DisplayAlert("Error", $"Workout name must be {MaxNameLength} characters or fewer.", "OK");
-            return;
-        }
-
-        if (WorkoutNotes.Length > MaxNotesLength)
-        {
-            await _dialogService.DisplayAlert("Error", $"Notes must be {MaxNotesLength} characters or fewer.", "OK");
-            return;
-        }
-
-        foreach (var exercise in Exercises)
-        {
-            if (string.IsNullOrWhiteSpace(exercise.Name))
-            {
-                await _dialogService.DisplayAlert("Error", "All exercises must have a name.", "OK");
-                return;
-            }
-
-            if (exercise.Name.Trim().Length > MaxExerciseNameLength)
-            {
-                await _dialogService.DisplayAlert("Error", $"Exercise names must be {MaxExerciseNameLength} characters or fewer.", "OK");
-                return;
-            }
-
-            if (exercise.Sets < 1)
-            {
-                await _dialogService.DisplayAlert("Error", "All exercises must have at least one set.", "OK");
-                return;
-            }
-
-            if (exercise.Reps < 1)
-            {
-                await _dialogService.DisplayAlert("Error", "All exercises must have at least one rep.", "OK");
-                return;
-            }
-
-            if (exercise.Weight < 0)
-            {
-                await _dialogService.DisplayAlert("Error", "Exercise weight cannot be negative.", "OK");
-                return;
-            }
-        }
-
         var session = new WorkoutSession
         {
             Id = WorkoutId,
             Name = WorkoutName,
             Date = WorkoutDate,
-            Notes = string.IsNullOrWhiteSpace(WorkoutNotes) ? null : WorkoutNotes,
+            Notes = WorkoutNotes,
             Exercises = Exercises.ToList()
         };
+
+        // The same rules the database enforces, so the editor cannot drift from storage.
+        WorkoutRules.Normalize(session);
+        var errors = WorkoutRules.Validate(session);
+        if (errors.Count > 0)
+        {
+            await _dialogService.DisplayAlert("Error", errors[0], "OK");
+            return;
+        }
 
         try
         {
