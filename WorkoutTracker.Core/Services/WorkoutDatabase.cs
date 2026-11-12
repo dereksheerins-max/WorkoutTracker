@@ -94,6 +94,14 @@ public class WorkoutDatabase : IDisposable
 
     public async Task<int> SaveWorkoutSessionAsync(WorkoutSession session)
     {
+        ArgumentNullException.ThrowIfNull(session);
+
+        // Checked before the transaction starts: a throw inside the transaction rolls
+        // back after SQLite has already assigned ids to the entity, which is what
+        // leaves callers holding ids that no longer exist.
+        if (session.Exercises is null)
+            throw new ArgumentException("Exercises must not be null; pass an empty list instead.", nameof(session));
+
         try
         {
             await InitializeAsync();
@@ -103,7 +111,10 @@ public class WorkoutDatabase : IDisposable
             {
                 if (session.Id != 0)
                 {
-                    conn.Update(session);
+                    // A missing row means the caller is working from stale state. Writing
+                    // the exercises anyway would attach them to nothing, so refuse instead.
+                    if (conn.Update(session) == 0)
+                        throw new InvalidOperationException($"Workout session {session.Id} no longer exists.");
                 }
                 else
                 {
@@ -114,7 +125,6 @@ public class WorkoutDatabase : IDisposable
 
                 // Load existing exercises for the session
                 var existing = conn.Table<Exercise>().Where(e => e.WorkoutSessionId == session.Id).ToList();
-                var existingIds = existing.Select(e => e.Id).ToHashSet();
                 var newIds = session.Exercises.Select(e => e.Id).Where(i => i != 0).ToHashSet();
 
                 // Delete any exercises that existed but were removed in the UI
@@ -128,10 +138,20 @@ public class WorkoutDatabase : IDisposable
                 foreach (var exercise in session.Exercises)
                 {
                     exercise.WorkoutSessionId = session.Id;
-                    if (exercise.Id != 0)
-                        conn.Update(exercise);
-                    else
+
+                    // Update reports 0 rows for an id that no longer exists (a stale id
+                    // left by a rolled-back save, for example), and updating a row that
+                    // belongs to another session would steal it. Re-target both cases.
+                    var owner = exercise.Id == 0 ? null : conn.Find<Exercise>(exercise.Id);
+                    if (owner is null || owner.WorkoutSessionId != session.Id)
+                    {
+                        exercise.Id = 0;
                         conn.Insert(exercise);
+                    }
+                    else
+                    {
+                        conn.Update(exercise);
+                    }
                 }
             });
 

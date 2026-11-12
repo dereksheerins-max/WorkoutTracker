@@ -149,6 +149,100 @@ public class WorkoutDatabaseTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Save_NewSessionWithStaleExerciseId_ShouldPersistTheExercise()
+    {
+        // A rolled-back save leaves the entity holding an id that no longer exists.
+        var session = new WorkoutSession
+        {
+            Name = "Stale Id",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise>
+            {
+                new() { Id = 999_999, Name = "Phantom", Sets = 3, Reps = 5, Weight = 26.2 }
+            }
+        };
+
+        await _database.SaveWorkoutSessionAsync(session);
+
+        var loaded = await _database.GetWorkoutSessionAsync(session.Id);
+        var exercise = Assert.Single(loaded!.Exercises);
+        Assert.Equal("Phantom", exercise.Name);
+        Assert.NotEqual(999_999, exercise.Id);
+
+        // Retrying must update the now-real row rather than insert a duplicate.
+        session.Exercises[0].Weight = 30;
+        await _database.SaveWorkoutSessionAsync(session);
+
+        var reloaded = await _database.GetWorkoutSessionAsync(session.Id);
+        var updated = Assert.Single(reloaded!.Exercises);
+        Assert.Equal(30, updated.Weight);
+    }
+
+    [Fact]
+    public async Task Save_ExerciseOwnedByAnotherSession_ShouldNotBeStolen()
+    {
+        var other = new WorkoutSession
+        {
+            Name = "Other",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Row", Sets = 3, Reps = 10, Weight = 40 } }
+        };
+        await _database.SaveWorkoutSessionAsync(other);
+        var otherExerciseId = other.Exercises[0].Id;
+
+        var mine = new WorkoutSession
+        {
+            Name = "Mine",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise>
+            {
+                new() { Id = otherExerciseId, Name = "Bench", Sets = 3, Reps = 5, Weight = 80 }
+            }
+        };
+
+        await _database.SaveWorkoutSessionAsync(mine);
+
+        var otherReloaded = await _database.GetWorkoutSessionAsync(other.Id);
+        Assert.Equal("Row", Assert.Single(otherReloaded!.Exercises).Name);
+
+        var mineReloaded = await _database.GetWorkoutSessionAsync(mine.Id);
+        Assert.Equal("Bench", Assert.Single(mineReloaded!.Exercises).Name);
+    }
+
+    [Fact]
+    public async Task Save_WhenSessionRowNoLongerExists_ShouldThrow()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "Deleted Elsewhere",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 3, Reps = 5, Weight = 100 } }
+        };
+        await _database.SaveWorkoutSessionAsync(session);
+        await _database.DeleteWorkoutSessionAsync(session);
+
+        session.Exercises[0].Weight = 110;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _database.SaveWorkoutSessionAsync(session));
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
+    [Fact]
+    public async Task Save_WithNullSession_ShouldThrowArgumentNullException()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() => _database.SaveWorkoutSessionAsync(null!));
+    }
+
+    [Fact]
+    public async Task Save_WithNullExerciseList_ShouldThrowArgumentException()
+    {
+        var session = new WorkoutSession { Name = "Null Exercises", Date = DateTime.Today, Exercises = null! };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _database.SaveWorkoutSessionAsync(session));
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
     public void Dispose()
     {
         _database.Dispose();
