@@ -107,6 +107,22 @@ public class WorkoutListViewModelTests : IDisposable
         Assert.NotNull(await _database.GetWorkoutSessionAsync(session.Id));
     }
 
+    [Fact]
+    public async Task LoadWorkouts_ConcurrentInvocations_LeaveConsistentStateAndClearSpinner()
+    {
+        await _database.SaveWorkoutSessionAsync(new WorkoutSession { Name = "Solo", Date = DateTime.Today });
+        var viewModel = CreateViewModel();
+
+        var first = viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
+        viewModel.IsRefreshing = true; // as a pull-to-refresh gesture would
+        var second = viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
+        await Task.WhenAll(first, second);
+
+        Assert.False(viewModel.IsRefreshing);
+        Assert.Single(viewModel.WorkoutSessions);
+        Assert.Equal("Solo", viewModel.WorkoutSessions[0].Name);
+    }
+
     public void Dispose()
     {
         _database.Dispose();

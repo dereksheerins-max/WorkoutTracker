@@ -13,6 +13,7 @@ public partial class WorkoutListViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
     private readonly Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? _logger;
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
 
     [ObservableProperty]
     private bool _isRefreshing;
@@ -31,9 +32,17 @@ public partial class WorkoutListViewModel : ObservableObject
         _logger = logger;
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task LoadWorkoutsAsync()
     {
+        // A pull-to-refresh can arrive while the OnAppearing load is still running.
+        // Skipping it is fine, but the spinner must be cleared either way.
+        if (!await _loadLock.WaitAsync(0))
+        {
+            IsRefreshing = false;
+            return;
+        }
+
         IsRefreshing = true;
         try
         {
@@ -52,6 +61,7 @@ public partial class WorkoutListViewModel : ObservableObject
         finally
         {
             IsRefreshing = false;
+            _loadLock.Release();
         }
     }
 
