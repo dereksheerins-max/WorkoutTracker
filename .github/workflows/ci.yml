@@ -7,8 +7,9 @@ on:
     branches: [ main ]
 
 jobs:
-  # Core + tests target net8.0 and run anywhere; the MAUI app cannot be built on
-  # Linux at all (net8.0-ios / net8.0-maccatalyst), so the two are split.
+  # Core + tests target net8.0 and run anywhere. The app's Apple targets are only part
+  # of the build on macOS (see WorkoutTracker.csproj), so no Xcode-bearing runner is
+  # needed for either job.
   core-tests:
     runs-on: ubuntu-latest
 
@@ -45,13 +46,15 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          # Pinned to the SDK the project is known to build with locally; floating 8.0.x
+          # picks up newer workload manifests whose support notices failed the build.
+          dotnet-version: '8.0.420'
 
-      - name: Install MAUI workload
-        run: dotnet workload install maui
+      # The Android workload is required even though only the Windows target is built:
+      # restore evaluates every target framework the project declares.
+      - name: Install MAUI workloads
+        run: dotnet workload install maui-android maui-windows
 
-      # The whole workload is needed because restore evaluates every target framework
-      # in the project, not just the one being built.
       - name: Build Windows app
         run: >
           dotnet build WorkoutTracker/WorkoutTracker.csproj
