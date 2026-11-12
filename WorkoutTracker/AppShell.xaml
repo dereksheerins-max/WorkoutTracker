@@ -3,21 +3,13 @@
     x:Class="WorkoutTracker.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:WorkoutTracker"
     xmlns:views="clr-namespace:WorkoutTracker.Views"
     Shell.FlyoutBehavior="Disabled"
     Title="WorkoutTracker">
 
     <ShellContent
         Title="Home"
-        ContentTemplate="{DataTemplate local:Views.WorkoutListPage}"
+        ContentTemplate="{DataTemplate views:WorkoutListPage}"
         Route="WorkoutListPage" />
-
-    <ShellContent
-        x:Name="AddWorkoutPage"
-        Title="Add Workout"
-        Route="AddWorkoutPage"
-        ContentTemplate="{DataTemplate local:Views.AddWorkoutPage}"
-        Shell.ContentTemplate="{DataTemplate local:Views.AddWorkoutPage}" />
 
 </Shell>
