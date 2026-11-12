@@ -13,26 +13,30 @@ public class WorkoutDatabase
 {
     private readonly SQLiteAsyncConnection _database;
     private readonly ILogger<WorkoutDatabase>? _logger;
+    private readonly Task _initTask;
 
     public WorkoutDatabase(string dbPath, ILogger<WorkoutDatabase>? logger = null)
     {
         _database = new SQLiteAsyncConnection(dbPath);
         _logger = logger;
+        _initTask = InitializeCoreAsync();
     }
 
-    // Explicit async initializer to avoid blocking in the constructor
-    public Task InitializeAsync()
+    // Tables are created once in the background; every operation awaits this first.
+    public Task InitializeAsync() => _initTask;
+
+    private async Task InitializeCoreAsync()
     {
-        return Task.WhenAll(
-            _database.CreateTableAsync<WorkoutSession>(),
-            _database.CreateTableAsync<Exercise>()
-        );
+        await _database.CreateTableAsync<WorkoutSession>();
+        await _database.CreateTableAsync<Exercise>();
     }
 
     public async Task<List<WorkoutSession>> GetWorkoutSessionsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
+            await InitializeAsync();
+
             var sessions = await _database.Table<WorkoutSession>()
                 .OrderByDescending(s => s.Date)
                 .ToListAsync();
@@ -60,7 +64,7 @@ public class WorkoutDatabase
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error loading workout sessions");
-            return new List<WorkoutSession>();
+            throw;
         }
     }
 
@@ -68,6 +72,8 @@ public class WorkoutDatabase
     {
         try
         {
+            await InitializeAsync();
+
             var session = await _database.Table<WorkoutSession>()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -83,7 +89,7 @@ public class WorkoutDatabase
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error loading workout session {Id}", id);
-            return null;
+            throw;
         }
     }
 
@@ -91,6 +97,8 @@ public class WorkoutDatabase
     {
         try
         {
+            await InitializeAsync();
+
             // Run the save in a single transaction to keep session and exercises consistent
             await _database.RunInTransactionAsync(conn =>
             {
@@ -141,6 +149,8 @@ public class WorkoutDatabase
     {
         try
         {
+            await InitializeAsync();
+
             await _database.RunInTransactionAsync(conn =>
             {
                 conn.Table<Exercise>().Delete(e => e.WorkoutSessionId == session.Id);

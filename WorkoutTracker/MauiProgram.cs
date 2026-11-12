@@ -23,10 +23,7 @@ public static class MauiProgram
 		{
 			var dbPath = Path.Combine(FileSystem.AppDataDirectory, "workouts.db3");
 			var logger = sp.GetService<ILogger<WorkoutDatabase>>();
-			var db = new WorkoutDatabase(dbPath, logger);
-			// Initialize synchronously during startup; use an explicit async initializer to avoid .Wait() in ctor
-			db.InitializeAsync().GetAwaiter().GetResult();
-			return db;
+			return new WorkoutDatabase(dbPath, logger);
 		});
 
 		// ViewModels

@@ -96,6 +96,55 @@ public class WorkoutDatabaseTests : IDisposable
         Assert.DoesNotContain(all, s => s.Id == id);
     }
 
+    [Fact]
+    public async Task FirstQuery_WithoutExplicitInitialize_ShouldSelfInitialize()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        try
+        {
+            var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+
+            var sessions = await db.GetWorkoutSessionsAsync();
+
+            Assert.Empty(sessions);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch { /* connection still holds the file open; ignore cleanup errors */ }
+        }
+    }
+
+    [Fact]
+    public async Task GetWorkoutSessionAsync_UnknownId_ShouldReturnNull()
+    {
+        var loaded = await _database.GetWorkoutSessionAsync(123456);
+
+        Assert.Null(loaded);
+    }
+
+    [Fact]
+    public async Task GetWorkoutSessionsAsync_DatabaseFailure_ShouldThrow()
+    {
+        // SQLite cannot open a directory as a database file, so first use fails.
+        var badPath = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}");
+        Directory.CreateDirectory(badPath);
+        try
+        {
+            var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
+
+            await Assert.ThrowsAnyAsync<Exception>(() => db.GetWorkoutSessionsAsync());
+        }
+        finally
+        {
+            Directory.Delete(badPath);
+        }
+    }
+
     public void Dispose()
     {
         try
