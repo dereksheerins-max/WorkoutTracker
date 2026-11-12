@@ -18,12 +18,21 @@
                         RemainingItemsThreshold="3"
                         RemainingItemsThresholdReachedCommand="{Binding LoadMoreWorkoutsCommand}">
             <CollectionView.Header>
-                <Grid Padding="16" ColumnDefinitions="*,Auto">
+                <Grid Padding="16" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <Label Text="My Workouts"
                            Style="{StaticResource Headline}"
                            VerticalOptions="Center"/>
-                    <Button Text="+"
+                    <Button Text="Export"
                             Grid.Column="1"
+                            Command="{Binding ExportWorkoutsCommand}"
+                            AutomationId="ExportWorkoutsButton"
+                            SemanticProperties.Hint="Shares your workout log as a JSON file"
+                            HeightRequest="44"
+                            CornerRadius="22"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"/>
+                    <Button Text="+"
+                            Grid.Column="2"
                             Command="{Binding AddWorkoutCommand}"
                             AutomationId="AddWorkoutButton"
                             SemanticProperties.Description="Add workout"

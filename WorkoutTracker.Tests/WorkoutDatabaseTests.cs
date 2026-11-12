@@ -513,6 +513,30 @@ public class WorkoutDatabaseTests : IAsyncLifetime
         File.Delete(quarantined!);
     }
 
+    [Fact]
+    public async Task GetWorkoutSessionsWithExercises_ShouldSpanPagesAndIncludeExercises()
+    {
+        const int total = 55; // more than one export page
+        var baseDate = new DateTime(2026, 1, 1);
+        for (var i = 0; i < total; i++)
+        {
+            await _database.SaveWorkoutSessionAsync(new WorkoutSession
+            {
+                Name = $"S{i:00}",
+                Date = baseDate.AddMinutes(i),
+                Exercises = new List<Exercise> { new() { Name = $"Exercise {i:00}", Sets = 3, Reps = 5, Weight = 10 } }
+            });
+        }
+
+        var sessions = await _database.GetWorkoutSessionsWithExercisesAsync();
+
+        Assert.Equal(total, sessions.Count);
+        Assert.Equal("S54", sessions[0].Name);
+        Assert.Equal("S00", sessions[^1].Name);
+        Assert.All(sessions, s => Assert.Single(s.Exercises));
+        Assert.Equal("Exercise 54", sessions[0].Exercises[0].Name);
+    }
+
     public async Task DisposeAsync()
     {
         await _database.DisposeAsync();

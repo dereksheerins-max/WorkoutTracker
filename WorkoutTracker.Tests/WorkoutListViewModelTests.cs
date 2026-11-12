@@ -11,6 +11,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
     private WorkoutDatabase _database = null!;
     private readonly FakeDialogService _dialogs = new();
     private readonly FakeNavigationService _navigation = new();
+    private readonly FakeFileExportService _export = new();
 
     public async Task InitializeAsync()
     {
@@ -20,7 +21,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
     }
 
     private WorkoutListViewModel CreateViewModel() =>
-        new(_database, _dialogs, _navigation, NullLogger<WorkoutListViewModel>.Instance);
+        new(_database, _dialogs, _navigation, _export, NullLogger<WorkoutListViewModel>.Instance);
 
     [Fact]
     public async Task LoadWorkouts_PopulatesSessionsNewestFirst()
@@ -43,7 +44,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
         try
         {
             var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
-            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation);
+            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export);
 
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
 
@@ -162,7 +163,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
 
         try
         {
-            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation);
+            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export);
 
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
@@ -176,6 +177,51 @@ public class WorkoutListViewModelTests : IAsyncLifetime
             foreach (var leftover in Directory.GetFiles(Path.GetTempPath(), $"{Path.GetFileName(path)}.unreadable-*"))
                 File.Delete(leftover);
         }
+    }
+
+    [Fact]
+    public async Task ExportWorkouts_ShouldHandOverEveryWorkoutWithExercises()
+    {
+        await _database.SaveWorkoutSessionAsync(new WorkoutSession
+        {
+            Name = "Push Day",
+            Date = DateTime.Today,
+            Notes = "felt strong",
+            Exercises = new List<Exercise> { new() { Name = "Bench Press", Sets = 3, Reps = 5, Weight = 82.5 } }
+        });
+        var viewModel = CreateViewModel();
+
+        await viewModel.ExportWorkoutsCommand.ExecuteAsync(null);
+
+        var export = Assert.Single(_export.Exports);
+        Assert.EndsWith(".json", export.FileName);
+        Assert.Contains("Push Day", export.Content);
+        Assert.Contains("Bench Press", export.Content);
+        Assert.Contains("felt strong", export.Content);
+        Assert.Empty(_dialogs.Alerts);
+    }
+
+    [Fact]
+    public async Task ExportWorkouts_WithNothingStored_ShouldExplainAndNotExport()
+    {
+        var viewModel = CreateViewModel();
+
+        await viewModel.ExportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Empty(_export.Exports);
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "There are no workouts to export yet.");
+    }
+
+    [Fact]
+    public async Task ExportWorkouts_WhenThePlatformStepFails_ShouldReportAnError()
+    {
+        await _database.SaveWorkoutSessionAsync(new WorkoutSession { Name = "Push Day", Date = DateTime.Today });
+        _export.Failure = new InvalidOperationException("share sheet denied");
+        var viewModel = CreateViewModel();
+
+        await viewModel.ExportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to export workouts");
     }
 
     public async Task DisposeAsync()

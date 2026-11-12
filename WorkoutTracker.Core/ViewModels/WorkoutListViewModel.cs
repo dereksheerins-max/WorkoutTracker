@@ -14,6 +14,7 @@ public partial class WorkoutListViewModel : ObservableObject
     private readonly WorkoutDatabase _database;
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
+    private readonly IFileExportService _exportService;
     private readonly ILogger<WorkoutListViewModel>? _logger;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private WorkoutCursor? _cursor;
@@ -28,11 +29,13 @@ public partial class WorkoutListViewModel : ObservableObject
         WorkoutDatabase database,
         IDialogService dialogService,
         INavigationService navigationService,
+        IFileExportService exportService,
         ILogger<WorkoutListViewModel>? logger = null)
     {
         _database = database;
         _dialogService = dialogService;
         _navigationService = navigationService;
+        _exportService = exportService;
         _logger = logger;
     }
 
@@ -124,6 +127,30 @@ public partial class WorkoutListViewModel : ObservableObject
     private async Task AddWorkoutAsync()
     {
         await _navigationService.GoToAddWorkoutAsync();
+    }
+
+    // The only way data leaves the app: the database is excluded from device backups,
+    // so a lost device loses the history unless the user exports it.
+    [RelayCommand]
+    private async Task ExportWorkoutsAsync()
+    {
+        try
+        {
+            var sessions = await _database.GetWorkoutSessionsWithExercisesAsync();
+            if (sessions.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("Export", "There are no workouts to export yet.", "OK");
+                return;
+            }
+
+            var fileName = $"workouts-{DateTime.Now:yyyyMMdd-HHmm}.json";
+            await _exportService.ExportAsync(fileName, WorkoutExport.ToJson(sessions));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed exporting workouts");
+            await _dialogService.ShowAlertAsync("Error", "Failed to export workouts", "OK");
+        }
     }
 
     [RelayCommand]

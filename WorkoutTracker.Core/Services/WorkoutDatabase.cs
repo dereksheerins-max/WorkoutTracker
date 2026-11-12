@@ -179,6 +179,56 @@ public class WorkoutDatabase : IDisposable, IAsyncDisposable
         }
     }
 
+    // Export needs every workout with its exercises. It pages through the list and
+    // batch-loads the exercises per page, so the query count grows with pages, not rows.
+    public async Task<List<WorkoutSession>> GetWorkoutSessionsWithExercisesAsync()
+    {
+        const int pageSize = 50;
+
+        try
+        {
+            var all = new List<WorkoutSession>();
+            WorkoutCursor? cursor = null;
+
+            do
+            {
+                var page = await GetWorkoutSessionsPageAsync(pageSize, cursor);
+                await PopulateExercisesAsync(page.Sessions);
+                all.AddRange(page.Sessions);
+                cursor = page.Next;
+            }
+            while (cursor is not null);
+
+            return all;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error loading workout sessions for export");
+            throw;
+        }
+    }
+
+    private async Task PopulateExercisesAsync(IReadOnlyList<WorkoutSession> sessions)
+    {
+        if (sessions.Count == 0)
+            return;
+
+        var ids = sessions.Select(s => s.Id).ToList();
+        var exercises = await _database.Table<Exercise>()
+            .Where(e => ids.Contains(e.WorkoutSessionId))
+            .OrderBy(e => e.Id)
+            .ToListAsync();
+
+        var bySession = exercises
+            .GroupBy(e => e.WorkoutSessionId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var session in sessions)
+        {
+            session.Exercises = bySession.TryGetValue(session.Id, out var list) ? list : new List<Exercise>();
+        }
+    }
+
     public async Task<WorkoutSession?> GetWorkoutSessionAsync(int id)
     {
         try

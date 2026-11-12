@@ -45,3 +45,20 @@ public class FakeNavigationService : INavigationService
         return Task.CompletedTask;
     }
 }
+
+public class FakeFileExportService : IFileExportService
+{
+    public List<(string FileName, string Content)> Exports { get; } = new();
+
+    // Set to make the platform step fail, as a denied share sheet would.
+    public Exception? Failure { get; set; }
+
+    public Task ExportAsync(string fileName, string content)
+    {
+        if (Failure is not null)
+            return Task.FromException(Failure);
+
+        Exports.Add((fileName, content));
+        return Task.CompletedTask;
+    }
+}
