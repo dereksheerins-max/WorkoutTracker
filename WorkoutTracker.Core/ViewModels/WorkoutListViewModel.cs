@@ -14,7 +14,7 @@ public partial class WorkoutListViewModel : ObservableObject
     private readonly WorkoutDatabase _database;
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
-    private readonly Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? _logger;
+    private readonly ILogger<WorkoutListViewModel>? _logger;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private WorkoutCursor? _cursor;
     private bool _hasMore;
@@ -28,7 +28,7 @@ public partial class WorkoutListViewModel : ObservableObject
         WorkoutDatabase database,
         IDialogService dialogService,
         INavigationService navigationService,
-        Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? logger = null)
+        ILogger<WorkoutListViewModel>? logger = null)
     {
         _database = database;
         _dialogService = dialogService;
@@ -66,7 +66,7 @@ public partial class WorkoutListViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed loading workouts");
-            await _dialogService.DisplayAlert("Error", "Failed to load workouts", "OK");
+            await _dialogService.ShowAlertAsync("Error", "Failed to load workouts", "OK");
         }
         finally
         {
@@ -101,7 +101,7 @@ public partial class WorkoutListViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed loading more workouts");
-            await _dialogService.DisplayAlert("Error", "Failed to load more workouts", "OK");
+            await _dialogService.ShowAlertAsync("Error", "Failed to load more workouts", "OK");
         }
         finally
         {
@@ -114,7 +114,7 @@ public partial class WorkoutListViewModel : ObservableObject
         if (_database.TakeQuarantineNotice() is not { } quarantinedPath)
             return;
 
-        await _dialogService.DisplayAlert(
+        await _dialogService.ShowAlertAsync(
             "Recovered",
             $"Your workout log could not be read, so the file was kept at:\n{quarantinedPath}\n\nA new, empty log has been started.",
             "OK");
@@ -141,7 +141,7 @@ public partial class WorkoutListViewModel : ObservableObject
         if (session is null)
             return;
 
-        if (await _dialogService.DisplayAlert("Delete", $"Delete {session.Name}?", "Yes", "No"))
+        if (await _dialogService.ConfirmAsync("Delete", $"Delete {session.Name}?", "Yes", "No"))
         {
             try
             {
@@ -151,7 +151,7 @@ public partial class WorkoutListViewModel : ObservableObject
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed deleting workout {Id}", session.Id);
-                await _dialogService.DisplayAlert("Error", "Failed to delete workout", "OK");
+                await _dialogService.ShowAlertAsync("Error", "Failed to delete workout", "OK");
             }
         }
     }

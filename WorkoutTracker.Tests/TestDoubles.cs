@@ -10,13 +10,13 @@ public class FakeDialogService : IDialogService
 
     public Queue<bool> ConfirmResults { get; } = new();
 
-    public Task DisplayAlert(string title, string message, string cancel)
+    public Task ShowAlertAsync(string title, string message, string cancel)
     {
         Alerts.Add((title, message));
         return Task.CompletedTask;
     }
 
-    public Task<bool> DisplayAlert(string title, string message, string accept, string cancel)
+    public Task<bool> ConfirmAsync(string title, string message, string accept, string cancel)
     {
         Confirms.Add((title, message));
         return Task.FromResult(ConfirmResults.Count > 0 && ConfirmResults.Dequeue());

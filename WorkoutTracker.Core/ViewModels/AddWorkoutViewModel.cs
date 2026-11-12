@@ -13,7 +13,7 @@ public partial class AddWorkoutViewModel : ObservableObject
     private readonly WorkoutDatabase _database;
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
-    private readonly Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? _logger;
+    private readonly ILogger<AddWorkoutViewModel>? _logger;
     private bool _isInitialized;
     private bool _loadFailed;
 
@@ -40,7 +40,7 @@ public partial class AddWorkoutViewModel : ObservableObject
         WorkoutDatabase database,
         IDialogService dialogService,
         INavigationService navigationService,
-        Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? logger = null)
+        ILogger<AddWorkoutViewModel>? logger = null)
     {
         _database = database;
         _dialogService = dialogService;
@@ -71,7 +71,7 @@ public partial class AddWorkoutViewModel : ObservableObject
             if (session is null)
             {
                 _loadFailed = true;
-                await _dialogService.DisplayAlert("Error", "This workout no longer exists.", "OK");
+                await _dialogService.ShowAlertAsync("Error", "This workout no longer exists.", "OK");
                 return;
             }
 
@@ -90,7 +90,7 @@ public partial class AddWorkoutViewModel : ObservableObject
         {
             _loadFailed = true;
             _logger?.LogError(ex, "Failed to load workout {Id}", WorkoutId);
-            await _dialogService.DisplayAlert("Error", "Failed to load workout", "OK");
+            await _dialogService.ShowAlertAsync("Error", "Failed to load workout", "OK");
         }
         finally
         {
@@ -127,7 +127,7 @@ public partial class AddWorkoutViewModel : ObservableObject
 
         if (_loadFailed)
         {
-            await _dialogService.DisplayAlert("Error", "This workout could not be loaded. Reopen it before saving.", "OK");
+            await _dialogService.ShowAlertAsync("Error", "This workout could not be loaded. Reopen it before saving.", "OK");
             return;
         }
 
@@ -145,7 +145,7 @@ public partial class AddWorkoutViewModel : ObservableObject
         var errors = WorkoutRules.Validate(session);
         if (errors.Count > 0)
         {
-            await _dialogService.DisplayAlert("Error", errors[0], "OK");
+            await _dialogService.ShowAlertAsync("Error", errors[0], "OK");
             return;
         }
 
@@ -157,7 +157,7 @@ public partial class AddWorkoutViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed saving workout {Id}", session.Id);
-            await _dialogService.DisplayAlert("Error", "Failed to save workout", "OK");
+            await _dialogService.ShowAlertAsync("Error", "Failed to save workout", "OK");
         }
     }
 }

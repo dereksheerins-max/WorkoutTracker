@@ -2,7 +2,7 @@ namespace WorkoutTracker.Services;
 
 public interface IDialogService
 {
-    Task DisplayAlert(string title, string message, string cancel);
+    Task ShowAlertAsync(string title, string message, string cancel);
 
-    Task<bool> DisplayAlert(string title, string message, string accept, string cancel);
+    Task<bool> ConfirmAsync(string title, string message, string accept, string cancel);
 }

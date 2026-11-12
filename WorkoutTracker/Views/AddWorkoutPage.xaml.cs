@@ -1,3 +1,4 @@
+using WorkoutTracker.Services;
 using WorkoutTracker.ViewModels;
 
 namespace WorkoutTracker.Views;
@@ -20,7 +21,7 @@ public partial class AddWorkoutPage : ContentPage, IQueryAttributable
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
-        _workoutId = query.TryGetValue("Id", out var value)
+        _workoutId = query.TryGetValue(RouteKeys.WorkoutId, out var value)
                      && int.TryParse(value?.ToString(), out var id) && id > 0
             ? id
             : null;

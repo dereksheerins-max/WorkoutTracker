@@ -8,7 +8,7 @@ public class ShellNavigationService : INavigationService
         Shell.Current.GoToAsync(nameof(AddWorkoutPage));
 
     public Task GoToEditWorkoutAsync(int workoutId) =>
-        Shell.Current.GoToAsync($"{nameof(AddWorkoutPage)}?Id={workoutId}");
+        Shell.Current.GoToAsync($"{nameof(AddWorkoutPage)}?{RouteKeys.WorkoutId}={workoutId}");
 
     public Task GoBackAsync() =>
         Shell.Current.GoToAsync("..");
