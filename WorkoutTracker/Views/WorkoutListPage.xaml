@@ -10,6 +10,16 @@
              Title="Workouts"
              Shell.NavBarIsVisible="True">
 
+    <!-- Import and export live in the toolbar; only the primary action stays on screen. -->
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Import"
+                     Command="{Binding ImportWorkoutsCommand}"
+                     AutomationId="ImportWorkoutsButton" />
+        <ToolbarItem Text="Export"
+                     Command="{Binding ExportWorkoutsCommand}"
+                     AutomationId="ExportWorkoutsButton" />
+    </ContentPage.ToolbarItems>
+
     <RefreshView IsRefreshing="{Binding IsRefreshing}"
                  Command="{Binding LoadWorkoutsCommand}">
         <CollectionView ItemsSource="{Binding WorkoutSessions}"
@@ -18,21 +28,12 @@
                         RemainingItemsThreshold="3"
                         RemainingItemsThresholdReachedCommand="{Binding LoadMoreWorkoutsCommand}">
             <CollectionView.Header>
-                <Grid Padding="16" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                <Grid Padding="16" ColumnDefinitions="*,Auto">
                     <Label Text="My Workouts"
                            Style="{StaticResource Headline}"
                            VerticalOptions="Center"/>
-                    <Button Text="Export"
-                            Grid.Column="1"
-                            Command="{Binding ExportWorkoutsCommand}"
-                            AutomationId="ExportWorkoutsButton"
-                            SemanticProperties.Hint="Shares your workout log as a JSON file"
-                            HeightRequest="44"
-                            CornerRadius="22"
-                            BackgroundColor="Transparent"
-                            TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"/>
                     <Button Text="+"
-                            Grid.Column="2"
+                            Grid.Column="1"
                             Command="{Binding AddWorkoutCommand}"
                             AutomationId="AddWorkoutButton"
                             SemanticProperties.Description="Add workout"

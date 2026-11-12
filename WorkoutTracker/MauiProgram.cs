@@ -31,6 +31,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IDialogService, ShellDialogService>();
 		builder.Services.AddSingleton<INavigationService, ShellNavigationService>();
 		builder.Services.AddSingleton<IFileExportService, ShareFileExportService>();
+		builder.Services.AddSingleton<IFileImportService, FilePickerImportService>();
 
 		// ViewModels
 		builder.Services.AddTransient<WorkoutListViewModel>();

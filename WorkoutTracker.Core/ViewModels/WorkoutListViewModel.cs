@@ -15,6 +15,7 @@ public partial class WorkoutListViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
     private readonly IFileExportService _exportService;
+    private readonly IFileImportService _importService;
     private readonly ILogger<WorkoutListViewModel>? _logger;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private WorkoutCursor? _cursor;
@@ -30,12 +31,14 @@ public partial class WorkoutListViewModel : ObservableObject
         IDialogService dialogService,
         INavigationService navigationService,
         IFileExportService exportService,
+        IFileImportService importService,
         ILogger<WorkoutListViewModel>? logger = null)
     {
         _database = database;
         _dialogService = dialogService;
         _navigationService = navigationService;
         _exportService = exportService;
+        _importService = importService;
         _logger = logger;
     }
 
@@ -53,18 +56,7 @@ public partial class WorkoutListViewModel : ObservableObject
         IsRefreshing = true;
         try
         {
-            var page = await _database.GetWorkoutSessionsPageAsync(PageSize);
-
-            WorkoutSessions.Clear();
-            foreach (var session in page.Sessions)
-            {
-                WorkoutSessions.Add(session);
-            }
-
-            _cursor = page.Next;
-            _hasMore = page.HasMore;
-
-            await NotifyIfDatabaseWasQuarantinedAsync();
+            await LoadFirstPageAsync();
         }
         catch (Exception ex)
         {
@@ -76,6 +68,23 @@ public partial class WorkoutListViewModel : ObservableObject
             IsRefreshing = false;
             _loadLock.Release();
         }
+    }
+
+    // Assumes the load lock is held.
+    private async Task LoadFirstPageAsync()
+    {
+        var page = await _database.GetWorkoutSessionsPageAsync(PageSize);
+
+        WorkoutSessions.Clear();
+        foreach (var session in page.Sessions)
+        {
+            WorkoutSessions.Add(session);
+        }
+
+        _cursor = page.Next;
+        _hasMore = page.HasMore;
+
+        await NotifyIfDatabaseWasQuarantinedAsync();
     }
 
     // Appends the next page; driven by the list reaching its remaining-items threshold.
@@ -150,6 +159,63 @@ public partial class WorkoutListViewModel : ObservableObject
         {
             _logger?.LogError(ex, "Failed exporting workouts");
             await _dialogService.ShowAlertAsync("Error", "Failed to export workouts", "OK");
+        }
+    }
+
+    // Restore path. Imported workouts are added alongside what is already stored; the
+    // confirmation step exists because it is the one action that adds a batch of data.
+    [RelayCommand]
+    private async Task ImportWorkoutsAsync()
+    {
+        try
+        {
+            var content = await _importService.PickTextAsync();
+            if (content is null)
+                return;
+
+            var parsed = WorkoutExport.Parse(content);
+            if (!parsed.Succeeded)
+            {
+                await _dialogService.ShowAlertAsync("Import", parsed.Error ?? "That file is not a valid workout export.", "OK");
+                return;
+            }
+
+            if (parsed.Sessions.Count == 0)
+            {
+                await _dialogService.ShowAlertAsync("Import", "That file does not contain any workouts.", "OK");
+                return;
+            }
+
+            var question = parsed.Sessions.Count == 1
+                ? "Add 1 workout from this file?"
+                : $"Add {parsed.Sessions.Count} workouts from this file?";
+
+            if (!await _dialogService.ConfirmAsync("Restore", question, "Restore", "Cancel"))
+                return;
+
+            var imported = await _database.ImportWorkoutSessionsAsync(parsed.Sessions);
+
+            // Wait for the lock rather than skipping: the list must show the restored
+            // workouts as soon as this reports success.
+            await _loadLock.WaitAsync();
+            try
+            {
+                await LoadFirstPageAsync();
+            }
+            finally
+            {
+                _loadLock.Release();
+            }
+
+            await _dialogService.ShowAlertAsync(
+                "Import",
+                imported == 1 ? "Restored 1 workout." : $"Restored {imported} workouts.",
+                "OK");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed importing workouts");
+            await _dialogService.ShowAlertAsync("Error", "Failed to import workouts", "OK");
         }
     }
 

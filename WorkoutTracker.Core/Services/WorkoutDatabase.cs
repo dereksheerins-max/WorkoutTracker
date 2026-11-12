@@ -229,6 +229,58 @@ public class WorkoutDatabase : IDisposable, IAsyncDisposable
         }
     }
 
+    // Restore path. Every imported workout is inserted as a new row, so a file can never
+    // overwrite a workout that already exists locally, and the whole batch is validated
+    // and written in one transaction: either it all lands or none of it does.
+    public async Task<int> ImportWorkoutSessionsAsync(IReadOnlyList<WorkoutSession> sessions)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        foreach (var session in sessions)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+
+            if (session.Exercises is null)
+                throw new ArgumentException("Imported workouts must declare their exercises.", nameof(sessions));
+
+            session.Id = 0;
+            WorkoutRules.Normalize(session);
+            var errors = WorkoutRules.Validate(session);
+            if (errors.Count > 0)
+                throw new ArgumentException($"Imported workout '{session.Name}' is not valid: {errors[0]}", nameof(sessions));
+        }
+
+        if (sessions.Count == 0)
+            return 0;
+
+        try
+        {
+            await InitializeAsync();
+
+            await _database.RunInTransactionAsync(conn =>
+            {
+                foreach (var session in sessions)
+                {
+                    conn.Insert(session);
+
+                    foreach (var exercise in session.Exercises)
+                    {
+                        exercise.Id = 0;
+                        exercise.WorkoutSessionId = session.Id;
+                        conn.Insert(exercise);
+                    }
+                }
+            });
+
+            return sessions.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error importing workout sessions");
+            throw;
+        }
+    }
+
     public async Task<WorkoutSession?> GetWorkoutSessionAsync(int id)
     {
         try

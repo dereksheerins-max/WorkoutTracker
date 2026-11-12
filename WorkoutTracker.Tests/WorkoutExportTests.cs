@@ -70,4 +70,125 @@ public class WorkoutExportTests
     {
         Assert.Throws<ArgumentNullException>(() => WorkoutExport.ToJson(null!));
     }
+
+    [Fact]
+    public void Parse_ShouldRoundTripWhatWasExported()
+    {
+        var original = new List<WorkoutSession>
+        {
+            new()
+            {
+                Id = 3,
+                Name = "Push Day",
+                Date = new DateTime(2026, 4, 1, 18, 30, 0),
+                Notes = "felt strong",
+                Exercises = new List<Exercise> { new() { Name = "Bench Press", Sets = 3, Reps = 5, Weight = 82.5 } }
+            }
+        };
+
+        var parsed = WorkoutExport.Parse(WorkoutExport.ToJson(original));
+
+        Assert.True(parsed.Succeeded);
+        var session = Assert.Single(parsed.Sessions);
+        Assert.Equal("Push Day", session.Name);
+        Assert.Equal(new DateTime(2026, 4, 1, 18, 30, 0), session.Date);
+        Assert.Equal("felt strong", session.Notes);
+
+        // Restored rows never keep the exported id, so they cannot overwrite local data.
+        Assert.Equal(0, session.Id);
+
+        var exercise = Assert.Single(session.Exercises);
+        Assert.Equal("Bench Press", exercise.Name);
+        Assert.Equal(3, exercise.Sets);
+        Assert.Equal(5, exercise.Reps);
+        Assert.Equal(82.5, exercise.Weight);
+        Assert.Equal(0, exercise.Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not json at all")]
+    [InlineData("{\"formatVersion\":1,")]
+    [InlineData("null")]
+    public void Parse_ShouldRejectInputThatIsNotAnExport(string? json)
+    {
+        var parsed = WorkoutExport.Parse(json);
+
+        Assert.False(parsed.Succeeded);
+        Assert.NotNull(parsed.Error);
+        Assert.Empty(parsed.Sessions);
+    }
+
+    [Fact]
+    public void Parse_ShouldRejectAnUnsupportedFormatVersion()
+    {
+        var parsed = WorkoutExport.Parse("{\"formatVersion\": 99, \"sessions\": []}");
+
+        Assert.False(parsed.Succeeded);
+        Assert.Contains("99", parsed.Error);
+        Assert.Contains(WorkoutExport.FormatVersion.ToString(), parsed.Error);
+    }
+
+    [Fact]
+    public void Parse_ShouldRejectAWorkoutThatBreaksTheRules()
+    {
+        const string json = """
+            {
+              "formatVersion": 1,
+              "sessions": [
+                { "id": 1, "name": "Good", "date": "2026-04-01T00:00:00" },
+                { "id": 2, "name": "Bad", "date": "2026-04-01T00:00:00",
+                  "exercises": [{ "name": "Squat", "sets": 3, "reps": 5, "weight": -1 }] }
+              ]
+            }
+            """;
+
+        var parsed = WorkoutExport.Parse(json);
+
+        Assert.False(parsed.Succeeded);
+        Assert.Contains("'Bad'", parsed.Error);
+        Assert.Contains("cannot be negative", parsed.Error);
+        Assert.Empty(parsed.Sessions);
+    }
+
+    [Fact]
+    public void Parse_ShouldRejectAnOversizedFile()
+    {
+        var json = new string('{', WorkoutExport.MaxDocumentLength + 1);
+
+        var parsed = WorkoutExport.Parse(json);
+
+        Assert.False(parsed.Succeeded);
+        Assert.Contains("too large", parsed.Error);
+    }
+
+    [Fact]
+    public void Parse_ShouldAcceptADocumentWithoutSessions()
+    {
+        var parsed = WorkoutExport.Parse("{\"formatVersion\": 1}");
+
+        Assert.True(parsed.Succeeded);
+        Assert.Empty(parsed.Sessions);
+    }
+
+    [Fact]
+    public void Parse_ShouldIgnorePropertiesItDoesNotKnow()
+    {
+        const string json = """
+            {
+              "formatVersion": 1,
+              "writtenBy": "a newer build",
+              "sessions": [
+                { "id": 1, "name": "Push Day", "date": "2026-04-01T00:00:00", "mood": "great" }
+              ]
+            }
+            """;
+
+        var parsed = WorkoutExport.Parse(json);
+
+        Assert.True(parsed.Succeeded);
+        Assert.Equal("Push Day", Assert.Single(parsed.Sessions).Name);
+    }
 }

@@ -12,6 +12,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
     private readonly FakeDialogService _dialogs = new();
     private readonly FakeNavigationService _navigation = new();
     private readonly FakeFileExportService _export = new();
+    private readonly FakeFileImportService _import = new();
 
     public async Task InitializeAsync()
     {
@@ -21,7 +22,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
     }
 
     private WorkoutListViewModel CreateViewModel() =>
-        new(_database, _dialogs, _navigation, _export, NullLogger<WorkoutListViewModel>.Instance);
+        new(_database, _dialogs, _navigation, _export, _import, NullLogger<WorkoutListViewModel>.Instance);
 
     [Fact]
     public async Task LoadWorkouts_PopulatesSessionsNewestFirst()
@@ -44,7 +45,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
         try
         {
             var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
-            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export);
+            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export, _import);
 
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
 
@@ -163,7 +164,7 @@ public class WorkoutListViewModelTests : IAsyncLifetime
 
         try
         {
-            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export);
+            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation, _export, _import);
 
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
             await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
@@ -222,6 +223,86 @@ public class WorkoutListViewModelTests : IAsyncLifetime
         await viewModel.ExportWorkoutsCommand.ExecuteAsync(null);
 
         Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to export workouts");
+    }
+
+    [Fact]
+    public async Task ImportWorkouts_WhenPickerIsCancelled_ShouldDoNothing()
+    {
+        _import.Content = null;
+        var viewModel = CreateViewModel();
+
+        await viewModel.ImportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Empty(_dialogs.Alerts);
+        Assert.Empty(_dialogs.Confirms);
+        Assert.Empty(await _database.GetWorkoutSessionsWithExercisesAsync());
+    }
+
+    [Fact]
+    public async Task ImportWorkouts_WithAnUnreadableFile_ShouldExplainWhy()
+    {
+        _import.Content = "this is not json";
+        var viewModel = CreateViewModel();
+
+        await viewModel.ImportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Title == "Import" && a.Message != null && a.Message.Contains("not a valid workout export"));
+        Assert.Empty(_dialogs.Confirms);
+    }
+
+    [Fact]
+    public async Task ImportWorkouts_WhenTheUserDeclines_ShouldNotWriteAnything()
+    {
+        _import.Content = WorkoutExport.ToJson(new List<WorkoutSession>
+        {
+            new() { Name = "Imported", Date = DateTime.Today }
+        });
+        _dialogs.ConfirmResults.Enqueue(false);
+        var viewModel = CreateViewModel();
+
+        await viewModel.ImportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Single(_dialogs.Confirms);
+        Assert.Empty(await _database.GetWorkoutSessionsWithExercisesAsync());
+        Assert.Empty(viewModel.WorkoutSessions);
+    }
+
+    [Fact]
+    public async Task ImportWorkouts_WhenConfirmed_ShouldStoreThemAndShowThem()
+    {
+        await _database.SaveWorkoutSessionAsync(new WorkoutSession { Name = "Existing", Date = DateTime.Today.AddDays(-1) });
+        _import.Content = WorkoutExport.ToJson(new List<WorkoutSession>
+        {
+            new()
+            {
+                Name = "Restored",
+                Date = DateTime.Today,
+                Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 5, Reps = 5, Weight = 100 } }
+            }
+        });
+        _dialogs.ConfirmResults.Enqueue(true);
+        var viewModel = CreateViewModel();
+
+        await viewModel.ImportWorkoutsCommand.ExecuteAsync(null);
+
+        var stored = await _database.GetWorkoutSessionsWithExercisesAsync();
+        Assert.Equal(2, stored.Count);
+        var restored = Assert.Single(stored, s => s.Name == "Restored");
+        Assert.Equal("Squat", Assert.Single(restored.Exercises).Name);
+
+        Assert.Equal(new[] { "Restored", "Existing" }, viewModel.WorkoutSessions.Select(s => s.Name));
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "Restored 1 workout.");
+    }
+
+    [Fact]
+    public async Task ImportWorkouts_WhenThePlatformStepFails_ShouldReportAnError()
+    {
+        _import.Failure = new InvalidOperationException("picker blew up");
+        var viewModel = CreateViewModel();
+
+        await viewModel.ImportWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to import workouts");
     }
 
     public async Task DisposeAsync()

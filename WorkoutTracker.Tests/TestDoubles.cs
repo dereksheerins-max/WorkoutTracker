@@ -62,3 +62,23 @@ public class FakeFileExportService : IFileExportService
         return Task.CompletedTask;
     }
 }
+
+public class FakeFileImportService : IFileImportService
+{
+    // Null means the user cancelled the picker.
+    public string? Content { get; set; }
+
+    public Exception? Failure { get; set; }
+
+    public int Calls { get; private set; }
+
+    public Task<string?> PickTextAsync()
+    {
+        Calls++;
+
+        if (Failure is not null)
+            return Task.FromException<string?>(Failure);
+
+        return Task.FromResult(Content);
+    }
+}

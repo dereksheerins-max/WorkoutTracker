@@ -537,6 +537,60 @@ public class WorkoutDatabaseTests : IAsyncLifetime
         Assert.Equal("Exercise 54", sessions[0].Exercises[0].Name);
     }
 
+    [Fact]
+    public async Task ImportWorkoutSessions_ShouldAddNewRowsWithoutTouchingExistingOnes()
+    {
+        var existing = new WorkoutSession
+        {
+            Name = "Existing",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Row", Sets = 3, Reps = 10, Weight = 40 } }
+        };
+        await _database.SaveWorkoutSessionAsync(existing);
+
+        // A file carrying the same id as a stored workout must not overwrite it.
+        var imported = new WorkoutSession
+        {
+            Id = existing.Id,
+            Name = "Restored",
+            Date = DateTime.Today.AddDays(1),
+            Exercises = new List<Exercise> { new() { Id = 999, Name = "Squat", Sets = 5, Reps = 5, Weight = 100 } }
+        };
+
+        var count = await _database.ImportWorkoutSessionsAsync(new[] { imported });
+
+        Assert.Equal(1, count);
+        var stored = await _database.GetWorkoutSessionsWithExercisesAsync();
+        Assert.Equal(2, stored.Count);
+
+        var keptOriginal = Assert.Single(stored, s => s.Name == "Existing");
+        Assert.Equal("Row", Assert.Single(keptOriginal.Exercises).Name);
+        Assert.Equal(40, keptOriginal.Exercises[0].Weight);
+
+        var restored = Assert.Single(stored, s => s.Name == "Restored");
+        Assert.NotEqual(existing.Id, restored.Id);
+        Assert.Equal("Squat", Assert.Single(restored.Exercises).Name);
+    }
+
+    [Fact]
+    public async Task ImportWorkoutSessions_WithAnInvalidWorkout_ShouldWriteNothing()
+    {
+        var valid = new WorkoutSession { Name = "Fine", Date = DateTime.Today };
+        var invalid = new WorkoutSession { Name = "  ", Date = DateTime.Today };
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _database.ImportWorkoutSessionsAsync(new[] { valid, invalid }));
+
+        Assert.Empty(await _database.GetWorkoutSessionsWithExercisesAsync());
+    }
+
+    [Fact]
+    public async Task ImportWorkoutSessions_WithNoWorkouts_ShouldDoNothing()
+    {
+        Assert.Equal(0, await _database.ImportWorkoutSessionsAsync(Array.Empty<WorkoutSession>()));
+        Assert.Empty(await _database.GetWorkoutSessionsWithExercisesAsync());
+    }
+
     public async Task DisposeAsync()
     {
         await _database.DisposeAsync();
