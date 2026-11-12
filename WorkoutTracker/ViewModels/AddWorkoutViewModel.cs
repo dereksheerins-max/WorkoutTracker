@@ -13,6 +13,7 @@ public partial class AddWorkoutViewModel : ObservableObject
 {
     private readonly WorkoutDatabase _database;
     private readonly Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? _logger;
+    private Task? _loadTask;
 
     [ObservableProperty]
     private int _workoutId;
@@ -26,6 +27,9 @@ public partial class AddWorkoutViewModel : ObservableObject
     [ObservableProperty]
     private string _workoutNotes = string.Empty;
 
+    [ObservableProperty]
+    private bool _isLoading;
+
     public ObservableCollection<Exercise> Exercises { get; } = new();
 
     public AddWorkoutViewModel(WorkoutDatabase database, Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? logger = null)
@@ -34,18 +38,19 @@ public partial class AddWorkoutViewModel : ObservableObject
         _logger = logger;
     }
 
-    // Call the async loader without changing the generated partial's signature.
-    // Use a helper that observes errors so they don't go unhandled.
+    // The generated partial can't be async; the helper observes errors and the
+    // task is tracked so Save can wait for the load to finish.
     partial void OnWorkoutIdChanged(int value)
     {
         if (value > 0)
         {
-            _ = LoadAndHandleAsync(value);
+            _loadTask = LoadAndHandleAsync(value);
         }
     }
 
     private async Task LoadAndHandleAsync(int id)
     {
+        IsLoading = true;
         try
         {
             await LoadWorkoutAsync(id);
@@ -54,6 +59,10 @@ public partial class AddWorkoutViewModel : ObservableObject
         {
             _logger?.LogError(ex, "Failed to load workout {Id}", id);
             await Shell.Current.DisplayAlert("Error", "Failed to load workout", "OK");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -100,6 +109,12 @@ public partial class AddWorkoutViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveWorkoutAsync()
     {
+        // Don't snapshot form state until the initial load has finished
+        if (_loadTask != null)
+        {
+            await _loadTask;
+        }
+
         if (string.IsNullOrWhiteSpace(WorkoutName))
         {
             await Shell.Current.DisplayAlert("Error", "Please enter a workout name", "OK");
@@ -129,6 +144,24 @@ public partial class AddWorkoutViewModel : ObservableObject
             if (exercise.Name.Trim().Length > MaxExerciseNameLength)
             {
                 await Shell.Current.DisplayAlert("Error", $"Exercise names must be {MaxExerciseNameLength} characters or fewer.", "OK");
+                return;
+            }
+
+            if (exercise.Sets < 1)
+            {
+                await Shell.Current.DisplayAlert("Error", "All exercises must have at least one set.", "OK");
+                return;
+            }
+
+            if (exercise.Reps < 1)
+            {
+                await Shell.Current.DisplayAlert("Error", "All exercises must have at least one rep.", "OK");
+                return;
+            }
+
+            if (exercise.Weight < 0)
+            {
+                await Shell.Current.DisplayAlert("Error", "Exercise weight cannot be negative.", "OK");
                 return;
             }
         }

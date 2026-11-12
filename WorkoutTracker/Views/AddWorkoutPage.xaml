@@ -9,6 +9,13 @@
 
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="16">
+            <VerticalStackLayout.Triggers>
+                <DataTrigger TargetType="VerticalStackLayout"
+                             Binding="{Binding IsLoading}"
+                             Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </VerticalStackLayout.Triggers>
 
             <Label Text="Workout Name"
                    Style="{StaticResource BodyStrong}"/>
