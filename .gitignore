@@ -1,18 +1,16 @@
-# This repo is rooted at the user's home directory.
-# Ignore everything at the root by default, then whitelist only project
-# entries — otherwise `git add` can pick up caches, configs, or secrets.
+# The repo root holds only the project entries below. Ignore everything else so
+# `git add` can never pick up unrelated files, caches, configs or secrets.
 /*
 !/WorkoutTracker/
 !/WorkoutTracker.Core/
 !/WorkoutTracker.Tests/
-!/GymTracker/
 !/WorkoutTrackerSolution.sln
 !/README.md
 !/.github/
 !/.gitignore
 
-# Accidental nested duplicate of the old project (local only)
-GymTracker/GymTracker/
+# Abandoned pre-rename project; kept on disk for reference, no longer tracked
+GymTracker/
 
 # Ignore build outputs
 bin/
