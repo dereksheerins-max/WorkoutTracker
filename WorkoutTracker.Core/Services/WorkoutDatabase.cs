@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SQLite;
@@ -31,7 +30,7 @@ public class WorkoutDatabase : IDisposable
         await _database.CreateTableAsync<Exercise>();
     }
 
-    public async Task<List<WorkoutSession>> GetWorkoutSessionsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<WorkoutSession>> GetWorkoutSessionsAsync()
     {
         try
         {
@@ -68,7 +67,7 @@ public class WorkoutDatabase : IDisposable
         }
     }
 
-    public async Task<WorkoutSession?> GetWorkoutSessionAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<WorkoutSession?> GetWorkoutSessionAsync(int id)
     {
         try
         {
@@ -93,7 +92,7 @@ public class WorkoutDatabase : IDisposable
         }
     }
 
-    public async Task<int> SaveWorkoutSessionAsync(WorkoutSession session, CancellationToken cancellationToken = default)
+    public async Task<int> SaveWorkoutSessionAsync(WorkoutSession session)
     {
         try
         {
@@ -145,7 +144,7 @@ public class WorkoutDatabase : IDisposable
         }
     }
 
-    public async Task DeleteWorkoutSessionAsync(WorkoutSession session, CancellationToken cancellationToken = default)
+    public async Task DeleteWorkoutSessionAsync(WorkoutSession session)
     {
         try
         {
