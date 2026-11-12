@@ -57,8 +57,20 @@ jobs:
         run: dotnet workload install maui-windows
 
       - name: Build Windows app
-        run: >
-          dotnet build WorkoutTracker/WorkoutTracker.csproj
-          --configuration Release
-          -f net8.0-windows10.0.19041.0
-          -p:MauiTargetFrameworks=net8.0-windows10.0.19041.0
+        shell: pwsh
+        run: |
+          $log = Join-Path $PWD 'build.log'
+          dotnet build WorkoutTracker/WorkoutTracker.csproj `
+            --configuration Release `
+            -f net8.0-windows10.0.19041.0 `
+            -p:MauiTargetFrameworks=net8.0-windows10.0.19041.0 `
+            --verbosity normal 2>&1 | Tee-Object -FilePath $log
+
+          if ($LASTEXITCODE -ne 0) {
+            # Job logs need authentication to read from automation, so the actual
+            # failure is re-emitted as annotations where it can be seen.
+            Select-String -Path $log -Pattern ': error ' | Select-Object -First 5 | ForEach-Object {
+              Write-Host "::error file=.github/workflows/ci.yml::$($_.Line.Trim())"
+            }
+            exit 1
+          }
