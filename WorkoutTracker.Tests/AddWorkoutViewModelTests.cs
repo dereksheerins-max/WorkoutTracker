@@ -30,11 +30,8 @@ public class AddWorkoutViewModelTests : IDisposable
         return viewModel;
     }
 
-    private static Task PendingLoad(AddWorkoutViewModel viewModel) =>
-        viewModel.LoadingTask ?? Task.CompletedTask;
-
     [Fact]
-    public async Task SettingWorkoutId_LoadsWorkoutIntoForm()
+    public async Task Initialize_WithExistingId_LoadsWorkoutIntoForm()
     {
         var session = new WorkoutSession
         {
@@ -46,8 +43,7 @@ public class AddWorkoutViewModelTests : IDisposable
         await _database.SaveWorkoutSessionAsync(session);
         var viewModel = CreateViewModel();
 
-        viewModel.WorkoutId = session.Id;
-        await PendingLoad(viewModel);
+        await viewModel.InitializeAsync(session.Id);
 
         Assert.Equal("Leg Day", viewModel.WorkoutName);
         Assert.Equal(new DateTime(2026, 1, 15), viewModel.WorkoutDate);
@@ -67,8 +63,7 @@ public class AddWorkoutViewModelTests : IDisposable
             var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
             var viewModel = new AddWorkoutViewModel(db, _dialogs, _navigation);
 
-            viewModel.WorkoutId = 1;
-            await PendingLoad(viewModel);
+            await viewModel.InitializeAsync(1);
 
             Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to load workout");
             Assert.False(viewModel.IsLoading);
@@ -188,8 +183,7 @@ public class AddWorkoutViewModelTests : IDisposable
         };
         await _database.SaveWorkoutSessionAsync(session);
         var viewModel = CreateViewModel();
-        viewModel.WorkoutId = session.Id;
-        await PendingLoad(viewModel);
+        await viewModel.InitializeAsync(session.Id);
         viewModel.WorkoutName = "New Name";
         viewModel.Exercises[0].Weight = 45;
 
@@ -207,10 +201,61 @@ public class AddWorkoutViewModelTests : IDisposable
         var viewModel = CreateViewModel();
         Assert.Equal("Add Workout", viewModel.Title);
 
-        viewModel.WorkoutId = 42;
-        await PendingLoad(viewModel);
+        var session = new WorkoutSession { Name = "Leg Day", Date = DateTime.Today };
+        await _database.SaveWorkoutSessionAsync(session);
+
+        await viewModel.InitializeAsync(session.Id);
 
         Assert.Equal("Edit Workout", viewModel.Title);
+    }
+
+    [Fact]
+    public async Task Save_AfterLoadFailure_DoesNotOverwriteStoredWorkout()
+    {
+        var badPath = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}");
+        Directory.CreateDirectory(badPath);
+        try
+        {
+            var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
+            var viewModel = new AddWorkoutViewModel(db, _dialogs, _navigation);
+            await viewModel.InitializeAsync(7);
+            _dialogs.Alerts.Clear();
+
+            // The form looks empty; a user could retype a name and hit Save.
+            viewModel.WorkoutName = "Retyped";
+            await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+            Assert.Contains(_dialogs.Alerts,
+                a => a.Message == "This workout could not be loaded. Reopen it before saving.");
+            Assert.Empty(_navigation.Calls);
+        }
+        finally
+        {
+            Directory.Delete(badPath);
+        }
+    }
+
+    [Fact]
+    public async Task Save_WhenStoredWorkoutWasDeleted_ShowsSaveErrorAndKeepsNothing()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "Gone",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 3, Reps = 5, Weight = 100 } }
+        };
+        await _database.SaveWorkoutSessionAsync(session);
+        var viewModel = CreateViewModel();
+        await viewModel.InitializeAsync(session.Id);
+
+        // Row removed behind the editor (e.g. deleted from the list on another page).
+        await _database.DeleteWorkoutSessionAsync(session);
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to save workout");
+        Assert.Empty(_navigation.Calls);
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
     }
 
     [Fact]

@@ -14,9 +14,8 @@ public partial class AddWorkoutViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly INavigationService _navigationService;
     private readonly Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? _logger;
-    private Task? _loadTask;
-
-    public Task? LoadingTask => _loadTask;
+    private bool _isInitialized;
+    private bool _loadFailed;
 
     public string Title => WorkoutId > 0 ? "Edit Workout" : "Add Workout";
 
@@ -49,51 +48,53 @@ public partial class AddWorkoutViewModel : ObservableObject
         _logger = logger;
     }
 
-    // The generated partial can't be async; the helper observes errors and the
-    // task is tracked so Save can wait for the load to finish.
     partial void OnWorkoutIdChanged(int value)
     {
         OnPropertyChanged(nameof(Title));
-
-        if (value > 0)
-        {
-            _loadTask = LoadAndHandleAsync(value);
-        }
     }
 
-    private async Task LoadAndHandleAsync(int id)
+    // Loading is explicit and awaited by the page: a load that fails must never be
+    // mistaken for an empty form, because saving that form would overwrite the
+    // existing workout and delete its exercises.
+    public async Task InitializeAsync(int? workoutId)
     {
+        if (_isInitialized || workoutId is not > 0)
+            return;
+
+        _isInitialized = true;
+        WorkoutId = workoutId.Value;
         IsLoading = true;
+
         try
         {
-            await LoadWorkoutAsync(id);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to load workout {Id}", id);
-            await _dialogService.DisplayAlert("Error", "Failed to load workout", "OK");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
+            var session = await _database.GetWorkoutSessionAsync(WorkoutId);
+            if (session is null)
+            {
+                _loadFailed = true;
+                await _dialogService.DisplayAlert("Error", "This workout no longer exists.", "OK");
+                return;
+            }
 
-    private async Task LoadWorkoutAsync(int id)
-    {
-        var session = await _database.GetWorkoutSessionAsync(id);
-        if (session != null)
-        {
             WorkoutName = session.Name;
             WorkoutDate = session.Date;
             WorkoutNotes = session.Notes ?? string.Empty;
 
             // Clear existing to avoid duplicates when re-loading
             Exercises.Clear();
-            foreach (var exercise in session.Exercises ?? Enumerable.Empty<Exercise>())
+            foreach (var exercise in session.Exercises)
             {
                 Exercises.Add(exercise);
             }
+        }
+        catch (Exception ex)
+        {
+            _loadFailed = true;
+            _logger?.LogError(ex, "Failed to load workout {Id}", WorkoutId);
+            await _dialogService.DisplayAlert("Error", "Failed to load workout", "OK");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -122,10 +123,16 @@ public partial class AddWorkoutViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveWorkoutAsync()
     {
-        // Don't snapshot form state until the initial load has finished
-        if (_loadTask != null)
+        // Never snapshot form state while the load is still running, and never save
+        // a form whose workout failed to load: the empty form would overwrite the
+        // stored workout and delete its exercises.
+        if (IsLoading)
+            return;
+
+        if (_loadFailed)
         {
-            await _loadTask;
+            await _dialogService.DisplayAlert("Error", "This workout could not be loaded. Reopen it before saving.", "OK");
+            return;
         }
 
         if (string.IsNullOrWhiteSpace(WorkoutName))
