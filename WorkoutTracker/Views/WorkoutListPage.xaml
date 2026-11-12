@@ -13,6 +13,7 @@
     <RefreshView IsRefreshing="{Binding IsRefreshing}"
                  Command="{Binding LoadWorkoutsCommand}">
         <CollectionView ItemsSource="{Binding WorkoutSessions}"
+                        AutomationId="WorkoutsList"
                         SelectionMode="None"
                         RemainingItemsThreshold="3"
                         RemainingItemsThresholdReachedCommand="{Binding LoadMoreWorkoutsCommand}">
@@ -24,6 +25,7 @@
                     <Button Text="+"
                             Grid.Column="1"
                             Command="{Binding AddWorkoutCommand}"
+                            AutomationId="AddWorkoutButton"
                             SemanticProperties.Description="Add workout"
                             WidthRequest="44"
                             HeightRequest="44"

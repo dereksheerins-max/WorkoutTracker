@@ -27,6 +27,7 @@
             <Label Text="Workout Name"
                    Style="{StaticResource BodyStrong}"/>
             <Entry Text="{Binding WorkoutName}"
+                   AutomationId="WorkoutNameEntry"
                    Placeholder="e.g., Push Day, Leg Day"/>
 
             <Label Text="Date"
@@ -36,6 +37,7 @@
             <Label Text="Notes (optional)"
                    Style="{StaticResource BodyStrong}"/>
             <Editor Text="{Binding WorkoutNotes}"
+                    AutomationId="WorkoutNotesEditor"
                     Placeholder="Add any notes..."
                     HeightRequest="100"/>
 
@@ -47,6 +49,7 @@
                 <Button Text="Add Exercise"
                         Grid.Column="1"
                         Command="{Binding AddExerciseCommand}"
+                        AutomationId="AddExerciseButton"
                         SemanticProperties.Hint="Adds an empty exercise to this workout"
                         BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
                         TextColor="White"/>
@@ -67,6 +70,7 @@
 
                                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                                     <Entry Text="{Binding Name}"
+                                           AutomationId="ExerciseNameEntry"
                                            Placeholder="Exercise Name"
                                            FontSize="16"/>
                                     <!-- Bound through the page rather than by walking the
@@ -75,6 +79,7 @@
                                             Text="X"
                                             TextColor="Red"
                                             BackgroundColor="Transparent"
+                                            AutomationId="RemoveExerciseButton"
                                             SemanticProperties.Description="Remove exercise"
                                             CommandParameter="{Binding .}"
                                             Command="{Binding ViewModel.RemoveExerciseCommand, Source={x:Reference PageRoot}}"
@@ -115,6 +120,7 @@
 
             <Button Text="Save Workout"
                     Command="{Binding SaveWorkoutCommand}"
+                    AutomationId="SaveWorkoutButton"
                     BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
                     TextColor="White"
                     HeightRequest="50"
