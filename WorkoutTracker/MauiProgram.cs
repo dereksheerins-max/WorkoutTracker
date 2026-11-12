@@ -26,6 +26,10 @@ public static class MauiProgram
 			return new WorkoutDatabase(dbPath, logger);
 		});
 
+		// App services
+		builder.Services.AddSingleton<IDialogService, ShellDialogService>();
+		builder.Services.AddSingleton<INavigationService, ShellNavigationService>();
+
 		// ViewModels
 		builder.Services.AddTransient<WorkoutListViewModel>();
 		builder.Services.AddTransient<AddWorkoutViewModel>();

@@ -4,13 +4,14 @@ using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging;
 using WorkoutTracker.Models;
 using WorkoutTracker.Services;
-using WorkoutTracker.Views;
 
 namespace WorkoutTracker.ViewModels;
 
 public partial class WorkoutListViewModel : ObservableObject
 {
     private readonly WorkoutDatabase _database;
+    private readonly IDialogService _dialogService;
+    private readonly INavigationService _navigationService;
     private readonly Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? _logger;
 
     [ObservableProperty]
@@ -18,9 +19,15 @@ public partial class WorkoutListViewModel : ObservableObject
 
     public ObservableCollection<WorkoutSession> WorkoutSessions { get; } = new();
 
-    public WorkoutListViewModel(WorkoutDatabase database, Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? logger = null)
+    public WorkoutListViewModel(
+        WorkoutDatabase database,
+        IDialogService dialogService,
+        INavigationService navigationService,
+        Microsoft.Extensions.Logging.ILogger<WorkoutListViewModel>? logger = null)
     {
         _database = database;
+        _dialogService = dialogService;
+        _navigationService = navigationService;
         _logger = logger;
     }
 
@@ -40,7 +47,7 @@ public partial class WorkoutListViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed loading workouts");
-            await Shell.Current.DisplayAlert("Error", "Failed to load workouts", "OK");
+            await _dialogService.DisplayAlert("Error", "Failed to load workouts", "OK");
         }
         finally
         {
@@ -51,19 +58,19 @@ public partial class WorkoutListViewModel : ObservableObject
     [RelayCommand]
     private async Task AddWorkoutAsync()
     {
-        await Shell.Current.GoToAsync(nameof(AddWorkoutPage));
+        await _navigationService.GoToAddWorkoutAsync();
     }
 
     [RelayCommand]
     private async Task EditWorkoutAsync(WorkoutSession session)
     {
-        await Shell.Current.GoToAsync($"{nameof(AddWorkoutPage)}?Id={session.Id}");
+        await _navigationService.GoToEditWorkoutAsync(session.Id);
     }
 
     [RelayCommand]
     private async Task DeleteWorkoutAsync(WorkoutSession session)
     {
-        if (await Shell.Current.DisplayAlert("Delete", $"Delete {session.Name}?", "Yes", "No"))
+        if (await _dialogService.DisplayAlert("Delete", $"Delete {session.Name}?", "Yes", "No"))
         {
             try
             {
@@ -73,7 +80,7 @@ public partial class WorkoutListViewModel : ObservableObject
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Failed deleting workout {Id}", session.Id);
-                await Shell.Current.DisplayAlert("Error", "Failed to delete workout", "OK");
+                await _dialogService.DisplayAlert("Error", "Failed to delete workout", "OK");
             }
         }
     }

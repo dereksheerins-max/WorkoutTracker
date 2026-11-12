@@ -1,0 +1,224 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using WorkoutTracker.Models;
+using WorkoutTracker.Services;
+using WorkoutTracker.ViewModels;
+
+namespace WorkoutTracker.Tests;
+
+public class AddWorkoutViewModelTests : IDisposable
+{
+    private readonly string _dbPath;
+    private readonly WorkoutDatabase _database;
+    private readonly FakeDialogService _dialogs = new();
+    private readonly FakeNavigationService _navigation = new();
+
+    public AddWorkoutViewModelTests()
+    {
+        _dbPath = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        _database = new WorkoutDatabase(_dbPath, NullLogger<WorkoutDatabase>.Instance);
+        _database.InitializeAsync().GetAwaiter().GetResult();
+    }
+
+    private AddWorkoutViewModel CreateViewModel() =>
+        new(_database, _dialogs, _navigation, NullLogger<AddWorkoutViewModel>.Instance);
+
+    private AddWorkoutViewModel CreateValidViewModel()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.WorkoutName = "Push Day";
+        viewModel.Exercises.Add(new Exercise { Name = "Bench Press", Sets = 3, Reps = 5, Weight = 80 });
+        return viewModel;
+    }
+
+    private static Task PendingLoad(AddWorkoutViewModel viewModel) =>
+        viewModel.LoadingTask ?? Task.CompletedTask;
+
+    [Fact]
+    public async Task SettingWorkoutId_LoadsWorkoutIntoForm()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "Leg Day",
+            Date = new DateTime(2026, 1, 15),
+            Notes = "Felt strong",
+            Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 5, Reps = 5, Weight = 100 } }
+        };
+        await _database.SaveWorkoutSessionAsync(session);
+        var viewModel = CreateViewModel();
+
+        viewModel.WorkoutId = session.Id;
+        await PendingLoad(viewModel);
+
+        Assert.Equal("Leg Day", viewModel.WorkoutName);
+        Assert.Equal(new DateTime(2026, 1, 15), viewModel.WorkoutDate);
+        Assert.Equal("Felt strong", viewModel.WorkoutNotes);
+        var exercise = Assert.Single(viewModel.Exercises);
+        Assert.Equal("Squat", exercise.Name);
+        Assert.Equal(5, exercise.Sets);
+    }
+
+    [Fact]
+    public async Task LoadFailure_ShowsErrorAlert()
+    {
+        var badPath = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}");
+        Directory.CreateDirectory(badPath);
+        try
+        {
+            var db = new WorkoutDatabase(badPath, NullLogger<WorkoutDatabase>.Instance);
+            var viewModel = new AddWorkoutViewModel(db, _dialogs, _navigation);
+
+            viewModel.WorkoutId = 1;
+            await PendingLoad(viewModel);
+
+            Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to load workout");
+            Assert.False(viewModel.IsLoading);
+        }
+        finally
+        {
+            Directory.Delete(badPath);
+        }
+    }
+
+    [Fact]
+    public async Task Save_WithEmptyName_ShowsErrorAndDoesNotSave()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.WorkoutName = "   ";
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "Please enter a workout name");
+        Assert.Empty(_navigation.Calls);
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
+    [Fact]
+    public async Task Save_WithOverlongName_ShowsError()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.WorkoutName = new string('x', 101);
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message.Contains("100 characters or fewer"));
+    }
+
+    [Fact]
+    public async Task Save_WithOverlongNotes_ShowsError()
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.WorkoutNotes = new string('x', 501);
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message.Contains("500 characters or fewer"));
+    }
+
+    [Fact]
+    public async Task Save_WithEmptyExerciseName_ShowsError()
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.Exercises[0].Name = " ";
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "All exercises must have a name.");
+        Assert.Empty(_navigation.Calls);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Save_WithNonPositiveSets_ShowsError(int sets)
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.Exercises[0].Sets = sets;
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "All exercises must have at least one set.");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Save_WithNonPositiveReps_ShowsError(int reps)
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.Exercises[0].Reps = reps;
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "All exercises must have at least one rep.");
+    }
+
+    [Fact]
+    public async Task Save_WithNegativeWeight_ShowsError()
+    {
+        var viewModel = CreateValidViewModel();
+        viewModel.Exercises[0].Weight = -2.5;
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        Assert.Contains(_dialogs.Alerts, a => a.Message == "Exercise weight cannot be negative.");
+    }
+
+    [Fact]
+    public async Task Save_NewWorkout_PersistsAndGoesBack()
+    {
+        var viewModel = CreateValidViewModel();
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        Assert.Equal("Push Day", saved.Name);
+        var exercise = Assert.Single(saved.Exercises);
+        Assert.Equal("Bench Press", exercise.Name);
+        Assert.Equal(new[] { "Back" }, _navigation.Calls);
+    }
+
+    [Fact]
+    public async Task Save_Edit_UpdatesAndGoesBack()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "Old Name",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Row", Sets = 3, Reps = 10, Weight = 40 } }
+        };
+        await _database.SaveWorkoutSessionAsync(session);
+        var viewModel = CreateViewModel();
+        viewModel.WorkoutId = session.Id;
+        await PendingLoad(viewModel);
+        viewModel.WorkoutName = "New Name";
+        viewModel.Exercises[0].Weight = 45;
+
+        await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        Assert.Equal("New Name", saved.Name);
+        Assert.Equal(45, saved.Exercises[0].Weight);
+        Assert.Equal(new[] { "Back" }, _navigation.Calls);
+    }
+
+    [Fact]
+    public void AddAndRemoveExercise_ManagesCollection()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.AddExerciseCommand.Execute(null);
+        var exercise = Assert.Single(viewModel.Exercises);
+        Assert.Equal("New Exercise", exercise.Name);
+
+        viewModel.RemoveExerciseCommand.Execute(exercise);
+        Assert.Empty(viewModel.Exercises);
+    }
+
+    public void Dispose()
+    {
+        _database.Dispose();
+
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
+    }
+}

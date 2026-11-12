@@ -8,12 +8,15 @@ using WorkoutTracker.Services;
 
 namespace WorkoutTracker.ViewModels;
 
-[QueryProperty(nameof(WorkoutId), "Id")]
 public partial class AddWorkoutViewModel : ObservableObject
 {
     private readonly WorkoutDatabase _database;
+    private readonly IDialogService _dialogService;
+    private readonly INavigationService _navigationService;
     private readonly Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? _logger;
     private Task? _loadTask;
+
+    public Task? LoadingTask => _loadTask;
 
     [ObservableProperty]
     private int _workoutId;
@@ -32,9 +35,15 @@ public partial class AddWorkoutViewModel : ObservableObject
 
     public ObservableCollection<Exercise> Exercises { get; } = new();
 
-    public AddWorkoutViewModel(WorkoutDatabase database, Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? logger = null)
+    public AddWorkoutViewModel(
+        WorkoutDatabase database,
+        IDialogService dialogService,
+        INavigationService navigationService,
+        Microsoft.Extensions.Logging.ILogger<AddWorkoutViewModel>? logger = null)
     {
         _database = database;
+        _dialogService = dialogService;
+        _navigationService = navigationService;
         _logger = logger;
     }
 
@@ -58,7 +67,7 @@ public partial class AddWorkoutViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to load workout {Id}", id);
-            await Shell.Current.DisplayAlert("Error", "Failed to load workout", "OK");
+            await _dialogService.DisplayAlert("Error", "Failed to load workout", "OK");
         }
         finally
         {
@@ -117,19 +126,19 @@ public partial class AddWorkoutViewModel : ObservableObject
 
         if (string.IsNullOrWhiteSpace(WorkoutName))
         {
-            await Shell.Current.DisplayAlert("Error", "Please enter a workout name", "OK");
+            await _dialogService.DisplayAlert("Error", "Please enter a workout name", "OK");
             return;
         }
 
         if (WorkoutName.Trim().Length > MaxNameLength)
         {
-            await Shell.Current.DisplayAlert("Error", $"Workout name must be {MaxNameLength} characters or fewer.", "OK");
+            await _dialogService.DisplayAlert("Error", $"Workout name must be {MaxNameLength} characters or fewer.", "OK");
             return;
         }
 
         if (WorkoutNotes.Length > MaxNotesLength)
         {
-            await Shell.Current.DisplayAlert("Error", $"Notes must be {MaxNotesLength} characters or fewer.", "OK");
+            await _dialogService.DisplayAlert("Error", $"Notes must be {MaxNotesLength} characters or fewer.", "OK");
             return;
         }
 
@@ -137,31 +146,31 @@ public partial class AddWorkoutViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(exercise.Name))
             {
-                await Shell.Current.DisplayAlert("Error", "All exercises must have a name.", "OK");
+                await _dialogService.DisplayAlert("Error", "All exercises must have a name.", "OK");
                 return;
             }
 
             if (exercise.Name.Trim().Length > MaxExerciseNameLength)
             {
-                await Shell.Current.DisplayAlert("Error", $"Exercise names must be {MaxExerciseNameLength} characters or fewer.", "OK");
+                await _dialogService.DisplayAlert("Error", $"Exercise names must be {MaxExerciseNameLength} characters or fewer.", "OK");
                 return;
             }
 
             if (exercise.Sets < 1)
             {
-                await Shell.Current.DisplayAlert("Error", "All exercises must have at least one set.", "OK");
+                await _dialogService.DisplayAlert("Error", "All exercises must have at least one set.", "OK");
                 return;
             }
 
             if (exercise.Reps < 1)
             {
-                await Shell.Current.DisplayAlert("Error", "All exercises must have at least one rep.", "OK");
+                await _dialogService.DisplayAlert("Error", "All exercises must have at least one rep.", "OK");
                 return;
             }
 
             if (exercise.Weight < 0)
             {
-                await Shell.Current.DisplayAlert("Error", "Exercise weight cannot be negative.", "OK");
+                await _dialogService.DisplayAlert("Error", "Exercise weight cannot be negative.", "OK");
                 return;
             }
         }
@@ -178,12 +187,12 @@ public partial class AddWorkoutViewModel : ObservableObject
         try
         {
             await _database.SaveWorkoutSessionAsync(session);
-            await Shell.Current.GoToAsync("..");
+            await _navigationService.GoBackAsync();
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed saving workout {Id}", session.Id);
-            await Shell.Current.DisplayAlert("Error", "Failed to save workout", "OK");
+            await _dialogService.DisplayAlert("Error", "Failed to save workout", "OK");
         }
     }
 }
