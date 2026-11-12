@@ -243,6 +243,91 @@ public class WorkoutDatabaseTests : IDisposable
         Assert.Empty(await _database.GetWorkoutSessionsAsync());
     }
 
+    [Fact]
+    public async Task Save_WithInvalidValues_ShouldThrowBeforeWriting()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "   ",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 3, Reps = 5, Weight = 100 } }
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _database.SaveWorkoutSessionAsync(session));
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
+    [Fact]
+    public async Task Save_WithNonFiniteWeight_ShouldThrowBeforeWriting()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "NaN Press",
+            Date = DateTime.Today,
+            Exercises = new List<Exercise> { new() { Name = "Squat", Sets = 3, Reps = 5, Weight = double.NaN } }
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _database.SaveWorkoutSessionAsync(session));
+        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+    }
+
+    [Fact]
+    public async Task Save_ShouldTrimWhitespaceAroundUserInput()
+    {
+        var session = new WorkoutSession
+        {
+            Name = "  Push Day  ",
+            Date = DateTime.Today,
+            Notes = "   felt strong   ",
+            Exercises = new List<Exercise> { new() { Name = "  Bench Press  ", Sets = 3, Reps = 5, Weight = 80 } }
+        };
+
+        await _database.SaveWorkoutSessionAsync(session);
+
+        var loaded = await _database.GetWorkoutSessionAsync(session.Id);
+        Assert.Equal("Push Day", loaded!.Name);
+        Assert.Equal("felt strong", loaded.Notes);
+        Assert.Equal("Bench Press", Assert.Single(loaded.Exercises).Name);
+    }
+
+    [Fact]
+    public async Task Initialize_AfterTransientFailure_ShouldRecoverOnTheNextCall()
+    {
+        // A directory at the database path makes the first open fail.
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}");
+        Directory.CreateDirectory(path);
+
+        var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+        await Assert.ThrowsAnyAsync<Exception>(() => db.GetWorkoutSessionsAsync());
+
+        Directory.Delete(path); // the transient problem goes away
+
+        Assert.Empty(await db.GetWorkoutSessionsAsync());
+        db.Dispose();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ShouldReleaseDatabaseFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+        await db.GetWorkoutSessionsAsync();
+
+        await db.DisposeAsync();
+
+        File.Delete(path); // throws if the connection still holds the file
+    }
+
+    [Fact]
+    public void Dispose_CalledTwice_ShouldNotThrow()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+
+        db.Dispose();
+        db.Dispose();
+    }
+
     public void Dispose()
     {
         _database.Dispose();

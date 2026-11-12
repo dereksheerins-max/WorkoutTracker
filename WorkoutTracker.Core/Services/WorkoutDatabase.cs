@@ -8,24 +8,54 @@ using WorkoutTracker.Models;
 
 namespace WorkoutTracker.Services;
 
-public class WorkoutDatabase : IDisposable
+public class WorkoutDatabase : IDisposable, IAsyncDisposable
 {
     private readonly SQLiteAsyncConnection _database;
     private readonly ILogger<WorkoutDatabase>? _logger;
-    private readonly Task _initTask;
+    private readonly object _initLock = new();
+    private Task? _initTask;
+    private bool _disposed;
 
     public WorkoutDatabase(string dbPath, ILogger<WorkoutDatabase>? logger = null)
     {
         _database = new SQLiteAsyncConnection(dbPath);
         _logger = logger;
-        _initTask = InitializeCoreAsync();
     }
 
-    // Tables are created once in the background; every operation awaits this first.
-    public Task InitializeAsync() => _initTask;
+    // Tables are created once and every operation awaits that first. A failed attempt
+    // is not cached: otherwise one transient problem at startup (a locked file, say)
+    // would make every later call fail for the lifetime of the app.
+    public async Task InitializeAsync()
+    {
+        var task = _initTask;
+        if (task is null)
+        {
+            lock (_initLock)
+            {
+                task = _initTask ??= InitializeCoreAsync();
+            }
+        }
+
+        try
+        {
+            await task;
+        }
+        catch
+        {
+            lock (_initLock)
+            {
+                if (ReferenceEquals(_initTask, task))
+                    _initTask = null;
+            }
+
+            throw;
+        }
+    }
 
     private async Task InitializeCoreAsync()
     {
+        // Mobile file systems can report SQLITE_BUSY briefly; wait instead of failing.
+        await _database.ExecuteScalarAsync<int>("PRAGMA busy_timeout = 3000");
         await _database.CreateTableAsync<WorkoutSession>();
         await _database.CreateTableAsync<Exercise>();
     }
@@ -101,6 +131,13 @@ public class WorkoutDatabase : IDisposable
         // leaves callers holding ids that no longer exist.
         if (session.Exercises is null)
             throw new ArgumentException("Exercises must not be null; pass an empty list instead.", nameof(session));
+
+        // The editor applies these too; enforcing them here means no other caller can
+        // store a workout the app cannot render (a NaN weight used to load back as 0).
+        WorkoutRules.Normalize(session);
+        var errors = WorkoutRules.Validate(session);
+        if (errors.Count > 0)
+            throw new ArgumentException(string.Join(" ", errors), nameof(session));
 
         try
         {
@@ -185,5 +222,21 @@ public class WorkoutDatabase : IDisposable
 
     public Task CloseAsync() => _database.CloseAsync();
 
-    public void Dispose() => CloseAsync().GetAwaiter().GetResult();
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _database.CloseAsync().GetAwaiter().GetResult();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        await _database.CloseAsync();
+    }
 }
