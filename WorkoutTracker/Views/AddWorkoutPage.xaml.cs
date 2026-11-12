@@ -14,6 +14,10 @@ public partial class AddWorkoutPage : ContentPage, IQueryAttributable
         BindingContext = _viewModel = viewModel;
     }
 
+    // Typed accessor so item-template bindings can reach the commands by path
+    // instead of walking the ancestor tree.
+    public AddWorkoutViewModel ViewModel => _viewModel;
+
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
         _workoutId = query.TryGetValue("Id", out var value)

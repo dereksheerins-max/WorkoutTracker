@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:WorkoutTracker.Models;assembly=WorkoutTracker.Core"
+             xmlns:views="clr-namespace:WorkoutTracker.Views"
              xmlns:vm="clr-namespace:WorkoutTracker.ViewModels;assembly=WorkoutTracker.Core"
              x:Class="WorkoutTracker.Views.AddWorkoutPage"
+             x:Name="PageRoot"
+             x:DataType="vm:AddWorkoutViewModel"
              Title="{Binding Title}"
              Shell.NavBarIsVisible="True">
 
+    <!-- One scroll owner only. A CollectionView inside a ScrollView is measured with
+         unbounded height, loses virtualisation and makes gesture arbitration
+         undefined, so the exercise list uses BindableLayout: a workout holds a
+         handful of exercises and needs no virtualisation. -->
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="16">
             <VerticalStackLayout.Triggers>
@@ -39,15 +47,14 @@
                 <Button Text="Add Exercise"
                         Grid.Column="1"
                         Command="{Binding AddExerciseCommand}"
+                        SemanticProperties.Hint="Adds an empty exercise to this workout"
                         BackgroundColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"
                         TextColor="White"/>
             </Grid>
 
-            <CollectionView ItemsSource="{Binding Exercises}"
-                            SelectionMode="None"
-                            HeightRequest="-1">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Exercises}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="models:Exercise">
                         <Border Margin="0,8"
                                 Padding="16"
                                 BackgroundColor="{AppThemeBinding Light=White, Dark=#2C2C2C}"
@@ -56,18 +63,22 @@
                             <Border.Shadow>
                                 <Shadow Brush="Black" Opacity="0.25" Radius="6" Offset="0,2" />
                             </Border.Shadow>
-                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
 
                                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                                     <Entry Text="{Binding Name}"
                                            Placeholder="Exercise Name"
                                            FontSize="16"/>
+                                    <!-- Bound through the page rather than by walking the
+                                         ancestor tree, which is unreliable inside item templates. -->
                                     <Button Grid.Column="1"
                                             Text="X"
                                             TextColor="Red"
                                             BackgroundColor="Transparent"
+                                            SemanticProperties.Description="Remove exercise"
                                             CommandParameter="{Binding .}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AddWorkoutViewModel}}, Path=RemoveExerciseCommand}"/>
+                                            Command="{Binding ViewModel.RemoveExerciseCommand, Source={x:Reference PageRoot}}"
+                                            x:DataType="views:AddWorkoutPage"/>
                                 </Grid>
 
                                 <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8">
@@ -99,8 +110,8 @@
                             </Grid>
                         </Border>
                     </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
 
             <Button Text="Save Workout"
                     Command="{Binding SaveWorkoutCommand}"
