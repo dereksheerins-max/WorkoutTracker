@@ -22,6 +22,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<WorkoutDatabase>(sp =>
 		{
 			var dbPath = Path.Combine(FileSystem.AppDataDirectory, "workouts.db3");
+			DatabaseFileProtection.ExcludeFromBackup(dbPath);
 			var logger = sp.GetService<ILogger<WorkoutDatabase>>();
 			return new WorkoutDatabase(dbPath, logger);
 		});
