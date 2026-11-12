@@ -5,18 +5,18 @@ using WorkoutTracker.ViewModels;
 
 namespace WorkoutTracker.Tests;
 
-public class AddWorkoutViewModelTests : IDisposable
+public class AddWorkoutViewModelTests : IAsyncLifetime
 {
-    private readonly string _dbPath;
-    private readonly WorkoutDatabase _database;
+    private string _dbPath = string.Empty;
+    private WorkoutDatabase _database = null!;
     private readonly FakeDialogService _dialogs = new();
     private readonly FakeNavigationService _navigation = new();
 
-    public AddWorkoutViewModelTests()
+    public async Task InitializeAsync()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
         _database = new WorkoutDatabase(_dbPath, NullLogger<WorkoutDatabase>.Instance);
-        _database.InitializeAsync().GetAwaiter().GetResult();
+        await _database.InitializeAsync();
     }
 
     private AddWorkoutViewModel CreateViewModel() =>
@@ -325,9 +325,9 @@ public class AddWorkoutViewModelTests : IDisposable
             Assert.Single((await _database.GetWorkoutSessionAsync(saved.Id))!.Exercises).Name);
     }
 
-    public void Dispose()
+    public async Task DisposeAsync()
     {
-        _database.Dispose();
+        await _database.DisposeAsync();
 
         if (File.Exists(_dbPath))
             File.Delete(_dbPath);
