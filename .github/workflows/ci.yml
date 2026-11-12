@@ -64,7 +64,7 @@ jobs:
             --configuration Release `
             -f net8.0-windows10.0.19041.0 `
             -p:MauiTargetFrameworks=net8.0-windows10.0.19041.0 `
-            --verbosity normal 2>&1 | Tee-Object -FilePath $log
+            --verbosity minimal 2>&1 | Tee-Object -FilePath $log
 
           if ($LASTEXITCODE -ne 0) {
             # Job logs need authentication to read from automation, so the actual

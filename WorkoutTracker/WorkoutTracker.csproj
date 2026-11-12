@@ -25,6 +25,11 @@
 		<RootNamespace>WorkoutTracker</RootNamespace>
 		<UseMaui>true</UseMaui>
 		<SingleProject>true</SingleProject>
+		<!-- Normally supplied by the installed MAUI workload. Falling back keeps restore
+		     working where the workload is present but does not define the property (the
+		     CI runner), which surfaced as NU1015: no version for Microsoft.Maui.Controls.
+		     Keep in step with the workload version. -->
+		<MauiVersion Condition="'$(MauiVersion)' == ''">8.0.100</MauiVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
