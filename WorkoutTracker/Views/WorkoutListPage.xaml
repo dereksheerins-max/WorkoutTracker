@@ -13,7 +13,9 @@
     <RefreshView IsRefreshing="{Binding IsRefreshing}"
                  Command="{Binding LoadWorkoutsCommand}">
         <CollectionView ItemsSource="{Binding WorkoutSessions}"
-                        SelectionMode="None">
+                        SelectionMode="None"
+                        RemainingItemsThreshold="3"
+                        RemainingItemsThresholdReachedCommand="{Binding LoadMoreWorkoutsCommand}">
             <CollectionView.Header>
                 <Grid Padding="16" ColumnDefinitions="*,Auto">
                     <Label Text="My Workouts"
@@ -67,7 +69,7 @@
                                     <Label Text="{Binding Date, StringFormat='{0:MMM dd, yyyy}'}"
                                            TextColor="Gray"
                                            FontSize="14"/>
-                                    <Label Text="{Binding Exercises.Count, StringFormat='{0} exercises'}"
+                                    <Label Text="{Binding ExerciseCount, StringFormat='{0} exercises'}"
                                            TextColor="Gray"
                                            FontSize="14"/>
                                 </VerticalStackLayout>

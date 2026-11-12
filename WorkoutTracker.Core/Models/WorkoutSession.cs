@@ -20,4 +20,8 @@ public partial class WorkoutSession : ObservableObject
 
     [Ignore]
     public List<Exercise> Exercises { get; set; } = new();
+
+    // Filled by the list query, which counts in SQL instead of loading exercise rows.
+    [Ignore]
+    public int ExerciseCount { get; set; }
 }

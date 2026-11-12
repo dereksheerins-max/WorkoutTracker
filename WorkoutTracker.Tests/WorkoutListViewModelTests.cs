@@ -123,6 +123,61 @@ public class WorkoutListViewModelTests : IDisposable
         Assert.Equal("Solo", viewModel.WorkoutSessions[0].Name);
     }
 
+    [Fact]
+    public async Task LoadWorkouts_ThenLoadMore_AppendsTheNextPageWithoutDuplicates()
+    {
+        var baseDate = new DateTime(2026, 1, 1);
+        var total = WorkoutListViewModel.PageSize + 5;
+        for (var i = 0; i < total; i++)
+        {
+            await _database.SaveWorkoutSessionAsync(new WorkoutSession
+            {
+                Name = $"S{i:00}",
+                Date = baseDate.AddMinutes(i)
+            });
+        }
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
+        Assert.Equal(WorkoutListViewModel.PageSize, viewModel.WorkoutSessions.Count);
+        Assert.Equal("S29", viewModel.WorkoutSessions[0].Name);
+
+        await viewModel.LoadMoreWorkoutsCommand.ExecuteAsync(null);
+
+        Assert.Equal(total, viewModel.WorkoutSessions.Count);
+        Assert.Equal(total, viewModel.WorkoutSessions.Select(s => s.Id).Distinct().Count());
+        Assert.Equal("S00", viewModel.WorkoutSessions[^1].Name);
+
+        // Asking again once the data is exhausted must not change anything.
+        await viewModel.LoadMoreWorkoutsCommand.ExecuteAsync(null);
+        Assert.Equal(total, viewModel.WorkoutSessions.Count);
+    }
+
+    [Fact]
+    public async Task LoadWorkouts_AfterUnreadableDatabase_ShowsRecoveryNoticeOnlyOnce()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"workouts_{Guid.NewGuid()}.db3");
+        await File.WriteAllTextAsync(path, "not a database");
+        var db = new WorkoutDatabase(path, NullLogger<WorkoutDatabase>.Instance);
+
+        try
+        {
+            var viewModel = new WorkoutListViewModel(db, _dialogs, _navigation);
+
+            await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
+            await viewModel.LoadWorkoutsCommand.ExecuteAsync(null);
+
+            Assert.Single(_dialogs.Alerts, a => a.Title == "Recovered");
+        }
+        finally
+        {
+            db.Dispose();
+            File.Delete(path);
+            foreach (var leftover in Directory.GetFiles(Path.GetTempPath(), $"{Path.GetFileName(path)}.unreadable-*"))
+                File.Delete(leftover);
+        }
+    }
+
     public void Dispose()
     {
         _database.Dispose();

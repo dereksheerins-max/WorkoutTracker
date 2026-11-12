@@ -22,6 +22,24 @@ public class AddWorkoutViewModelTests : IDisposable
     private AddWorkoutViewModel CreateViewModel() =>
         new(_database, _dialogs, _navigation, NullLogger<AddWorkoutViewModel>.Instance);
 
+    // The list API is paged; these assertions only need everything that is stored.
+    private async Task<List<WorkoutSession>> LoadAllAsync()
+    {
+        var all = new List<WorkoutSession>();
+        WorkoutCursor? cursor = null;
+
+        while (true)
+        {
+            var page = await _database.GetWorkoutSessionsPageAsync(50, cursor);
+            all.AddRange(page.Sessions);
+
+            if (!page.HasMore)
+                return all;
+
+            cursor = page.Next;
+        }
+    }
+
     private AddWorkoutViewModel CreateValidViewModel()
     {
         var viewModel = CreateViewModel();
@@ -84,7 +102,7 @@ public class AddWorkoutViewModelTests : IDisposable
 
         Assert.Contains(_dialogs.Alerts, a => a.Message == "Please enter a workout name");
         Assert.Empty(_navigation.Calls);
-        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+        Assert.Empty(await LoadAllAsync());
     }
 
     [Fact]
@@ -165,10 +183,13 @@ public class AddWorkoutViewModelTests : IDisposable
 
         await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
 
-        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        var saved = Assert.Single(await LoadAllAsync());
         Assert.Equal("Push Day", saved.Name);
-        var exercise = Assert.Single(saved.Exercises);
-        Assert.Equal("Bench Press", exercise.Name);
+        Assert.Equal(1, saved.ExerciseCount);
+
+        // The list query only counts exercises; the editor's query returns them.
+        var stored = Assert.Single((await _database.GetWorkoutSessionAsync(saved.Id))!.Exercises);
+        Assert.Equal("Bench Press", stored.Name);
         Assert.Equal(new[] { "Back" }, _navigation.Calls);
     }
 
@@ -189,9 +210,9 @@ public class AddWorkoutViewModelTests : IDisposable
 
         await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
 
-        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        var saved = Assert.Single(await LoadAllAsync());
         Assert.Equal("New Name", saved.Name);
-        Assert.Equal(45, saved.Exercises[0].Weight);
+        Assert.Equal(45, Assert.Single((await _database.GetWorkoutSessionAsync(saved.Id))!.Exercises).Weight);
         Assert.Equal(new[] { "Back" }, _navigation.Calls);
     }
 
@@ -255,7 +276,7 @@ public class AddWorkoutViewModelTests : IDisposable
 
         Assert.Contains(_dialogs.Alerts, a => a.Title == "Error" && a.Message == "Failed to save workout");
         Assert.Empty(_navigation.Calls);
-        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+        Assert.Empty(await LoadAllAsync());
     }
 
     [Fact]
@@ -284,7 +305,7 @@ public class AddWorkoutViewModelTests : IDisposable
 
         Assert.Contains(_dialogs.Alerts, a => a.Message == "Exercise weight must be a finite number.");
         Assert.Empty(_navigation.Calls);
-        Assert.Empty(await _database.GetWorkoutSessionsAsync());
+        Assert.Empty(await LoadAllAsync());
     }
 
     [Fact]
@@ -297,10 +318,11 @@ public class AddWorkoutViewModelTests : IDisposable
 
         await viewModel.SaveWorkoutCommand.ExecuteAsync(null);
 
-        var saved = Assert.Single(await _database.GetWorkoutSessionsAsync());
+        var saved = Assert.Single(await LoadAllAsync());
         Assert.Equal("Push Day", saved.Name);
         Assert.Equal("notes", saved.Notes);
-        Assert.Equal("Bench Press", Assert.Single(saved.Exercises).Name);
+        Assert.Equal("Bench Press",
+            Assert.Single((await _database.GetWorkoutSessionAsync(saved.Id))!.Exercises).Name);
     }
 
     public void Dispose()
