@@ -50,13 +50,15 @@ jobs:
           # picks up newer workload manifests whose support notices failed the build.
           dotnet-version: '8.0.420'
 
-      # The Android workload is required even though only the Windows target is built:
-      # restore evaluates every target framework the project declares.
-      - name: Install MAUI workloads
-        run: dotnet workload install maui-android maui-windows
+      # Only the Windows head is built here, so only its workload is installed. The
+      # build selects that head explicitly; leaving the others in the target list makes
+      # restore demand their workloads too, and the Android one reports as an error.
+      - name: Install MAUI workload
+        run: dotnet workload install maui-windows
 
       - name: Build Windows app
         run: >
           dotnet build WorkoutTracker/WorkoutTracker.csproj
           --configuration Release
           -f net8.0-windows10.0.19041.0
+          -p:MauiTargetFrameworks=net8.0-windows10.0.19041.0

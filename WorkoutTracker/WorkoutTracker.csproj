@@ -7,6 +7,10 @@
 		<TargetFrameworks>net8.0-android</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- Lets a build (CI) select one head, so restore does not need every workload.
+		     Distinct from TargetFrameworks on purpose: overriding that as a global
+		     property also hits the referenced projects and breaks their restore. -->
+		<TargetFrameworks Condition="'$(MauiTargetFrameworks)' != ''">$(MauiTargetFrameworks)</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
 
